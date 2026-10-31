@@ -1,0 +1,11 @@
+## Interface: 120105
+## Title: Concentration Tracker
+## Notes: Tracks profession concentration and Artisan's Moxie across characters. |n|cff00ff00/conc|r — window, |cff00ff00/conc refresh|r — sync, |cff00ff00/conclanguage|r — settings.
+## Author: IceDNicco
+## Version: 3.9.58
+## OptionalDeps: LibDataBroker-1.1
+## SavedVariables: ConcentrationTrackerDB, ConcentrationTrackerSettings
+## DefaultState: Enabled
+
+Locales.lua
+ConcentrationTracker.lua

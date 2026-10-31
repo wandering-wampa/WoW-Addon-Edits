@@ -1,0 +1,13 @@
+# Local and game-specific data
+WTF/
+Cache/
+Logs/
+SavedVariables/
+*.bak
+*.log
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
