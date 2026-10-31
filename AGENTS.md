@@ -26,3 +26,8 @@ The user explicitly requests that all future addon changes made as part of our w
 - Preserve opaque Retail styling, the corrected shared table margin, responsive bars, damage-meter artwork, working minimap placement, login discovery, and four-way character/class sorting unless explicitly asked to change them.
 - Login scans must read the logged-in character's live currency values, never copy another character's quantities.
 - Validate actual refresh and row-reuse paths when changing UI layout; they can override initial anchors.
+
+## Release packaging
+
+- Keep release ZIPs directly extractable into Interface/AddOns: `<AddonName>/<AddonName>.toc`, without repository or `addons/` wrapper folders.
+- Run `python tools/package_addons.py` when preparing addon downloads. The packaging workflow publishes fresh ZIPs after addon changes are pushed to main. Verify its result before reporting a new downloadable build.

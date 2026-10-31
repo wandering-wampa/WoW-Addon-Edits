@@ -2,6 +2,14 @@
 
 Personal World of Warcraft addon customizations maintained by wandering-wampa.
 
+## Download and install
+
+Download the addon ZIP from the [latest release](https://github.com/wandering-wampa/WoW-Addon-Edits/releases/latest). In CurseForge, choose **Open Addons Folder**, then extract the ZIP into that folder. The ZIP contains the addon folder directly, such as `ConcentrationTracker/ConcentrationTracker.toc`; do not add an extra nested folder. Restart WoW for a new addon, or `/reload` after replacing an existing copy.
+
+Download the release asset rather than GitHub's automatic **Source code** archives. CurseForge updates can overwrite these customizations.
+
+New changes to addon files on `main` automatically publish fresh installable ZIPs. To package locally, run `python tools/package_addons.py`; archives appear under `local-work/dist/`.
+
 ## Addons
 
 | Addon | Customizations and setup |

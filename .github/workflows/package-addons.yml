@@ -1,0 +1,26 @@
+name: Package addons
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'addons/**'
+      - 'tools/package_addons.py'
+      - '.github/workflows/package-addons.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python tools/package_addons.py --output dist
+      - name: Publish manual-install ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="addons-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+          gh release create "$tag" dist/*.zip --target "$GITHUB_SHA" --title "Addon build ${GITHUB_RUN_NUMBER}" --notes "Extract each addon folder directly into your WoW Interface/AddOns folder. These ZIPs include the addon folder at the archive root."
