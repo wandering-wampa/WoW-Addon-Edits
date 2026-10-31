@@ -14,7 +14,7 @@ New changes to addon files on `main` automatically publish fresh installable ZIP
 
 | Addon | Customizations and setup |
 | --- | --- |
-| Concentration Tracker | [README](addons/ConcentrationTracker_Edit/README.md) â€” Retail UI styling, responsive meters, alt concentration tracking, and sorting. |
+| ConcentrationTracker_Edit | [README](addons/ConcentrationTracker_Edit/README.md) - Retail UI styling, responsive meters, alt concentration tracking, and sorting. |
 
 Each addon lives under `addons/<AddonName>/` and has its own README covering its changes, installation, commands, validation, and upstream attribution.
 
