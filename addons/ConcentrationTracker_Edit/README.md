@@ -1,6 +1,6 @@
-# Concentration Tracker
+# ConcentrationTracker_Edit
 
-The `addons/ConcentrationTracker` directory contains the customized addon currently installed in WoW Retail, based on Concentration Tracker 3.9.58 by IceDNicco.
+The `addons/ConcentrationTracker_Edit` directory contains the customized addon currently installed in WoW Retail, based on Concentration Tracker 3.9.58 by IceDNicco.
 
 Upstream: https://www.curseforge.com/wow/addons/concentration-tracker
 
@@ -9,7 +9,7 @@ Upstream: https://www.curseforge.com/wow/addons/concentration-tracker
 - Retail portrait frame, centered title, textured outer panel, framed content area, and matching settings window.
 - Fully opaque backgrounds.
 - Native damage-meter bar artwork and responsive concentration bars that stretch as the window resizes.
-- Name A–Z/Z–A and class A–Z/Z–A sorting by clicking the Character header. Names remain A–Z within each class.
+- Name Aâ€“Z/Zâ€“A and class Aâ€“Z/Zâ€“A sorting by clicking the Character header. Names remain Aâ€“Z within each class.
 - Local refill date/time and a compact footer with details on hover.
 - Automatic login concentration discovery using known profession/currency mappings, with short retries while data loads.
 - Explicit missing-data labels instead of misleading meters on Moxie-only rows.
@@ -19,7 +19,7 @@ Upstream: https://www.curseforge.com/wow/addons/concentration-tracker
 ## Install
 
 1. Exit WoW, or reload after replacing an already installed addon.
-2. Copy this `ConcentrationTracker` folder into your WoW Retail `Interface/AddOns` directory.
+2. Copy this `ConcentrationTracker_Edit` folder into your WoW Retail `Interface/AddOns` directory.
 3. Enable Concentration Tracker and run `/conc` in-game.
 
 Commands:
@@ -46,3 +46,11 @@ Addon-manager updates can overwrite these changes. Compare future upstream updat
 ## Upstream documentation
 
 See [the original upstream README](UPSTREAM-README.md) for the original feature documentation.
+
+## Replacing an existing installation
+
+This is a replacement for ConcentrationTracker, not a companion addon. Do not enable both copies together: they share frame names, commands, and SavedVariables globals.
+
+For existing settings and alt data: completely exit WoW first. Back up `WTF/Account/<account>/SavedVariables/ConcentrationTracker.lua`, then copy it to `ConcentrationTracker_Edit.lua` in that same directory. Keep the original as a backup. Repeat for each account you use. SavedVariables global names remain unchanged inside the file.
+
+Remove the original `ConcentrationTracker` folder from the active AddOns directory (or move it outside AddOns as a backup), extract `ConcentrationTracker_Edit` into AddOns, then restart WoW. New installations do not need the SavedVariables copy.

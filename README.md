@@ -4,7 +4,7 @@ Personal World of Warcraft addon customizations maintained by wandering-wampa.
 
 ## Download and install
 
-Download the addon ZIP from the [latest release](https://github.com/wandering-wampa/WoW-Addon-Edits/releases/latest). In CurseForge, choose **Open Addons Folder**, then extract the ZIP into that folder. The ZIP contains the addon folder directly, such as `ConcentrationTracker/ConcentrationTracker.toc`; do not add an extra nested folder. Restart WoW for a new addon, or `/reload` after replacing an existing copy.
+Download the addon ZIP from the [latest release](https://github.com/wandering-wampa/WoW-Addon-Edits/releases/latest). In CurseForge, choose **Open Addons Folder**, then extract the ZIP into that folder. The ZIP contains the addon folder directly, such as `ConcentrationTracker_Edit/ConcentrationTracker_Edit.toc`; do not add an extra nested folder. Restart WoW for a new addon, or `/reload` after replacing an existing copy.
 
 Download the release asset rather than GitHub's automatic **Source code** archives. CurseForge updates can overwrite these customizations.
 
@@ -14,7 +14,7 @@ New changes to addon files on `main` automatically publish fresh installable ZIP
 
 | Addon | Customizations and setup |
 | --- | --- |
-| Concentration Tracker | [README](addons/ConcentrationTracker/README.md) â€” Retail UI styling, responsive meters, alt concentration tracking, and sorting. |
+| Concentration Tracker | [README](addons/ConcentrationTracker_Edit/README.md) â€” Retail UI styling, responsive meters, alt concentration tracking, and sorting. |
 
 Each addon lives under `addons/<AddonName>/` and has its own README covering its changes, installation, commands, validation, and upstream attribution.
 

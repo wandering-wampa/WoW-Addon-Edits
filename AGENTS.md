@@ -31,3 +31,9 @@ The user explicitly requests that all future addon changes made as part of our w
 
 - Keep release ZIPs directly extractable into Interface/AddOns: `<AddonName>/<AddonName>.toc`, without repository or `addons/` wrapper folders.
 - Run `python tools/package_addons.py` when preparing addon downloads. The packaging workflow publishes fresh ZIPs after addon changes are pushed to main. Verify its result before reporting a new downloadable build.
+
+## Edited addon names
+
+- Name all edited addons `<OriginalAddonName>_Edit`, including the repository folder, installation folder, primary TOC basename, release ZIP, and addon-list title.
+- Current addon: `addons/ConcentrationTracker_Edit/ConcentrationTracker_Edit.toc`. The existing original-named installed folder is a legacy installation until the user migrates with WoW closed.
+- Retain SavedVariables global names and original authorship; renaming an addon changes the SavedVariables filename. Document migration and never run original and edited copies together when they share globals.
