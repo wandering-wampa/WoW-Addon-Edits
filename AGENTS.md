@@ -42,3 +42,6 @@ The user explicitly requests that all future addon changes made as part of our w
 
 - Never commit machine-specific absolute paths, local usernames, hostnames, account identifiers, screenshots, personal setup details, or local scratch-file inventories. Use repository-relative paths and generic installation instructions.
 - Keep machine-specific instructions only in ignored local files. Inspect staged content and release archives for accidental disclosures before pushing.
+
+- Every main push builds all addon ZIPs. Use explicit latest-release publication and skip superseded commits so an older build cannot replace a newer download. Wait for a successful release and verify assets before claiming download links are current.
+- For addon-name migrations, wait for WoW to exit normally, back up the installed addon and account SavedVariables, preserve existing destination data, and verify copies before removing the original from the active AddOns directory.
