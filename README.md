@@ -1,48 +1,22 @@
 # WoW Addon Edits
 
-Personal modifications to World of Warcraft addons, maintained by wandering-wampa.
+Personal World of Warcraft addon customizations maintained by wandering-wampa.
 
-## Concentration Tracker
+## Addons
 
-The `addons/ConcentrationTracker` directory contains the customized addon currently installed in WoW Retail, based on Concentration Tracker 3.9.58 by IceDNicco.
+| Addon | Customizations and setup |
+| --- | --- |
+| Concentration Tracker | [README](addons/ConcentrationTracker/README.md) â€” Retail UI styling, responsive meters, alt concentration tracking, and sorting. |
 
-Upstream: https://www.curseforge.com/wow/addons/concentration-tracker
+Each addon lives under `addons/<AddonName>/` and has its own README covering its changes, installation, commands, validation, and upstream attribution.
 
-### Custom changes
+## Development
 
-- Retail portrait frame, centered title, textured outer panel, framed content area, and matching settings window.
-- Fully opaque backgrounds.
-- Native damage-meter bar artwork and responsive concentration bars that stretch as the window resizes.
-- Name A–Z/Z–A and class A–Z/Z–A sorting by clicking the Character header. Names remain A–Z within each class.
-- Local refill date/time and a compact footer with details on hover.
-- Automatic login concentration discovery using known profession/currency mappings, with short retries while data loads.
-- Explicit missing-data labels instead of misleading meters on Moxie-only rows.
-- Minimap positioning based on actual map dimensions and shape, plus a compact tooltip.
-- Shared table margins that remain stable when the weekly banner refreshes; dedicated character-marker padding.
 
-### Install
+Keep the repository copy and the installed WoW addon in sync. After making and checking requested changes, update the relevant addon README when needed, commit the changes, and push to `main`. See [AGENTS.md](AGENTS.md) for the working instructions.
 
-1. Exit WoW, or reload after replacing an already installed addon.
-2. Copy `addons/ConcentrationTracker` into your WoW Retail `Interface/AddOns` directory.
-3. Enable Concentration Tracker and run `/conc` in-game.
+Addon-manager updates can overwrite customizations. Review upstream updates before replacing edited files. Keep account data, SavedVariables, logs, and credentials out of this repository.
 
-Commands:
+## Rights
 
-- `/conc`: open the tracker.
-- `/conclanguage`: open settings.
-- `/conc refresh`: refresh current-character data.
-- `/conc logincheck`: print login-scan diagnostics.
-
-Characters still need to be logged in for live readings. Other characters' regeneration is estimated from saved data. New profession types may need an initial profession-window scan if no usable mapping is available yet.
-
-### Validation
-
-Lua 5.1 compilation and targeted local checks cover login discovery, four sorting modes, responsive column sizing, minimap geometry, recycled Moxie-only rows, and weekly-banner anchor updates. The layout has been iterated against in-game screenshots; live client behavior remains the final check after changes.
-
-## Attribution and rights
-
-The upstream addon identifies IceDNicco as its author and is listed as **All Rights Reserved** on CurseForge. Original authorship and upstream documentation are retained. This private repository stores personal customizations; it does not grant a license to redistribute upstream code. No new license is applied to the upstream addon.
-
-## Maintenance
-
-Addon-manager updates can overwrite these changes. Compare future upstream updates before replacing this customized copy. Account data, SavedVariables, logs, and credentials do not belong in this repository.
+This repository is private. Upstream authors retain their rights; check each addon's README for attribution and license details. No blanket license is applied to the collection.

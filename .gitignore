@@ -11,3 +11,6 @@ SavedVariables/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local development history, backups, and scratch files
+/local-work/

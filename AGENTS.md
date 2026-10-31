@@ -1,0 +1,28 @@
+# Working instructions
+
+## User preference: sync every addon change to GitHub
+
+The user explicitly requests that all future addon changes made as part of our work be committed and pushed to https://github.com/wandering-wampa/WoW-Addon-Edits.
+
+- Repository: use the current checkout of wandering-wampa/WoW-Addon-Edits.
+- Remote: `origin`; branch: `main`; keep the repository private.
+- Locate the intended WoW Retail Interface/AddOns directory on the current machine before deployment.
+- Editable addon sources belong in `addons/<AddonName>/` in this repository.
+- Before editing, inspect Git status and compare the relevant installed files with the repository copy. Preserve unrelated or newer user changes; do not blindly overwrite them.
+- Make requested changes, run appropriate checks, and synchronize the edited addon files between the repository and the installed game folder. Verify that deployed files match the repository copy.
+- For each completed addon change, update its documentation as needed, commit the relevant files with a descriptive message, and push to origin/main. This is standing user authorization; do not ask again solely to commit or push. Follow any required tool approval process.
+- Verify the remote commit matches the local commit. If authentication, network access, permissions, or merge conflicts block a push, report it clearly; never claim an unpushed change is backed up.
+- Never commit SavedVariables, account data, credentials, caches, logs, or temporary test assets. Never force-push or discard unrelated changes.
+
+## Documentation
+
+- The root README is a concise collection overview and links to each addon README.
+- Each `addons/<AddonName>/README.md` describes that addon's custom changes, installation, commands, validation, limitations, and upstream attribution.
+- Preserve original upstream documentation as `UPSTREAM-README.md` when replacing an upstream README with our customization guide.
+- Preserve upstream authorship and licensing. Do not add a repository-wide license that purports to relicense upstream code.
+
+## Concentration Tracker
+
+- Preserve opaque Retail styling, the corrected shared table margin, responsive bars, damage-meter artwork, working minimap placement, login discovery, and four-way character/class sorting unless explicitly asked to change them.
+- Login scans must read the logged-in character's live currency values, never copy another character's quantities.
+- Validate actual refresh and row-reuse paths when changing UI layout; they can override initial anchors.
