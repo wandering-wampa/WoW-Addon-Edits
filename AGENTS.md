@@ -5,7 +5,7 @@
 The user explicitly requests that all future addon changes made as part of our work be committed and pushed to https://github.com/wandering-wampa/WoW-Addon-Edits.
 
 - Repository: use the current checkout of wandering-wampa/WoW-Addon-Edits.
-- Remote: `origin`; branch: `main`; keep the repository private.
+- Remote: `origin`; branch: `main`; the user explicitly requested that the repository be public.
 - Locate the intended WoW Retail Interface/AddOns directory on the current machine before deployment.
 - Editable addon sources belong in `addons/<AddonName>/` in this repository.
 - Before editing, inspect Git status and compare the relevant installed files with the repository copy. Preserve unrelated or newer user changes; do not blindly overwrite them.

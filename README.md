@@ -19,4 +19,4 @@ Addon-manager updates can overwrite customizations. Review upstream updates befo
 
 ## Rights
 
-This repository is private. Upstream authors retain their rights; check each addon's README for attribution and license details. No blanket license is applied to the collection.
+This repository is public. Upstream authors retain their rights; check each addon's README for attribution and license details. No blanket license is applied to the collection.

@@ -37,7 +37,7 @@ Lua 5.1 compilation and targeted local checks cover login discovery, four sortin
 
 ## Attribution and rights
 
-The upstream addon identifies IceDNicco as its author and is listed as **All Rights Reserved** on CurseForge. Original authorship and upstream documentation are retained. This private repository stores personal customizations; it does not grant a license to redistribute upstream code. No new license is applied to the upstream addon.
+The upstream addon identifies IceDNicco as its author and is listed as **All Rights Reserved** on CurseForge. Original authorship and upstream documentation are retained. This repository stores personal customizations; it does not grant a license to redistribute upstream code. No new license is applied to the upstream addon.
 
 ## Maintenance
 
