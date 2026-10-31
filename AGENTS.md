@@ -37,3 +37,8 @@ The user explicitly requests that all future addon changes made as part of our w
 - Name all edited addons `<OriginalAddonName>_Edit`, including the repository folder, installation folder, primary TOC basename, release ZIP, and addon-list title.
 - Current addon: `addons/ConcentrationTracker_Edit/ConcentrationTracker_Edit.toc`. The existing original-named installed folder is a legacy installation until the user migrates with WoW closed.
 - Retain SavedVariables global names and original authorship; renaming an addon changes the SavedVariables filename. Document migration and never run original and edited copies together when they share globals.
+
+## Public repository privacy
+
+- Never commit machine-specific absolute paths, local usernames, hostnames, account identifiers, screenshots, personal setup details, or local scratch-file inventories. Use repository-relative paths and generic installation instructions.
+- Keep machine-specific instructions only in ignored local files. Inspect staged content and release archives for accidental disclosures before pushing.
