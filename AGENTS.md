@@ -16,7 +16,7 @@ The user explicitly requests that all future addon changes made as part of our w
 
 ## Documentation
 
-- The root README is a concise collection overview and links to each addon README.
+- Keep the root README minimal: a manual AddOns-folder installation sentence and a table with addon name, what it does, and a direct latest-release ZIP download link. Link addon names to their individual READMEs. Add new addons as table rows; keep detailed documentation out of the root README.
 - Each `addons/<AddonName>/README.md` describes that addon's custom changes, installation, commands, validation, limitations, and upstream attribution.
 - Preserve original upstream documentation as `UPSTREAM-README.md` when replacing an upstream README with our customization guide.
 - Preserve upstream authorship and licensing. Do not add a repository-wide license that purports to relicense upstream code.
