@@ -85,6 +85,7 @@ function ns.Navigate(step)
         OpenWorldMap(map)
     elseif C_QuestLog.IsOnQuest(step.id) then
         C_SuperTrack.SetSuperTrackedQuestID(step.id)
+        OpenWorldMap()
         if QuestMapFrame_OpenToQuestDetails then QuestMapFrame_OpenToQuestDetails(step.id) end
     else
         OpenWorldMap(step.map)

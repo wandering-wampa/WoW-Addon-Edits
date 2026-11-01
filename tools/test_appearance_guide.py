@@ -79,7 +79,7 @@ C_Map={GetMapInfo=function() return {name='Test zone'} end, CanSetUserWaypointOn
  SetUserWaypoint=function(p) userPin=p end}
 UiMapPoint={CreateFromCoordinates=function(m,x,y) return {m,x,y} end}
 C_SuperTrack={SetSuperTrackedUserWaypoint=function() end, SetSuperTrackedQuestID=function(id) tracked=id end}
-function OpenWorldMap(id) openedMap=id end
+function OpenWorldMap(id) openedMap=id or 'current' end
 function QuestMapFrame_OpenToQuestDetails(id) details=id end
 function InCombatLockdown() return combat or false end
 function UnitName() return 'Test character' end
@@ -139,7 +139,7 @@ ns.Navigate(step); assert(openedMap==2112 and userPin[1]==2112)
 active[step.id]=true; waypoint={2025,.2,.3}
 ns.Navigate(step); assert(openedMap==2025 and userPin[2]==.2)
 waypoint=nil; userPin=nil
-ns.Navigate(step); assert(userPin==nil and tracked==step.id and details==step.id)
+ns.Navigate(step); assert(userPin==nil and tracked==step.id and details==step.id and openedMap=='current')
 combat=true; openedMap=nil; ns.Navigate(step); assert(openedMap==nil); combat=false
 active={}
 
