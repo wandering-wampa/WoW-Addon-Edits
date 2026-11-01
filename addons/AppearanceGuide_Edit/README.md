@@ -1,7 +1,7 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.4.0 includes **Tyr's Guard Bulwark** (item 208198), its introductory
+Version 0.5.0 includes **Tyr's Guard Bulwark** (item 208198), its introductory
 quest and Tyr reward chain, plus a live campaign prerequisite inspector.
 ATT and BtWQuests are not required. A complete, verified walkthrough from every
 possible character starting state is still a work in progress.
@@ -19,6 +19,11 @@ Restart WoW after installing this new addon, and enable it in the addon list.
    TomTom is optional; without it, this button uses the built-in map.
 6. Use **Prerequisites** to see campaign requirements and individual campaign
    quests, with your character's completion and active-quest status.
+7. Click **Track this item** to make the displayed item your active target.
+   `/ag` and the minimap button open that item directly.
+
+Restart WoW once when upgrading to 0.5.0 so it loads the new launcher file and
+saved-setting declaration. Existing quest and other addon data are untouched.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
 The panel uses a Retail portrait frame, plain opaque reading panels with native
@@ -27,9 +32,27 @@ instruction panel. Long quest names wrap. Drag the frame to reposition it.
 
 ## Commands
 
-- `/ag` or `/appearanceguide`: open the Tyr's Guard Bulwark guide.
-- `/ag 208198`: open a specific item ID.
-- `/ag <item link>`: open the linked item.
+- `/ag` or `/appearanceguide`: open your active item.
+- `/ag 208198`: preview a specific item ID without changing your active target.
+- `/ag <item link>`: preview the linked item.
+- `/ag track`: make the currently displayed item active.
+- `/ag track <item ID or link>`: set and open an active item directly.
+
+## Active item and minimap button
+
+**Track this item** saves one active item across sessions and characters on the
+same WoW account. Its button reads **Active item** when you are viewing that
+target. While previewing a different appearance, **Open active item** returns to
+it. Opening other appearances does not change what you track. Quest progress is
+always read from the logged-in character. The initial target is Tyr's Guard
+Bulwark; items without a guide can still be tracked and retain their explicit
+**Guide not available** message.
+
+The minimap button shows the active item's icon, with a cloak fallback while the
+item is loading. Its tooltip names the target. Left-click opens it, even if the
+guide window is already displaying another item. Drag the button around the map
+to reposition it; placement adapts to map size, scale, and supported map shapes.
+The angle is saved along with the active item in `AppearanceGuideEditDB`.
 
 ## Quest progress and navigation
 
@@ -112,8 +135,9 @@ available, the coordinate button is hidden; Show on map still tracks the quest.
   the Sets tab, illusions, and the transmogrifier UI are outside initial scope.
 - Guide notes are English; quest names and active objectives use the client's
   localized text when available.
-- No SavedVariables are created or modified. Existing addons and character data
-  are independent of this addon.
+- Only the active item and minimap angle are saved in this addon's
+  `AppearanceGuideEditDB`. Quest completion is read from the game, not written or
+  copied between characters. Existing addons' settings are not modified.
 
 ## Validation
 
@@ -123,11 +147,17 @@ completion, live campaign blockers and chapter expansion, cyclic/missing metadat
 parallel quest flags, available versus hidden quest pins, source selection, map navigation, recycled UI rows/models, deferred
 wardrobe loading, menu preservation, and event-driven refresh. Packaging checks
 the archive root and TOC layout.
+Tests also cover explicit tracking versus preview, saved-setting reloads,
+launcher initialization, repeated clicks, delayed item icons, and minimap
+dragging/placement at different scales and shapes.
 
 These checks use mocked WoW APIs; they do not establish live-client rendering or
 end-to-end quest completion. In-game acceptance checks:
 
 - Open `/ag`, inspect long quest names, scroll to the final reward, and select Current quest.
+- Track an item, preview another, and verify `/ag` and the minimap button return
+  to the tracked one. Restart the game and check that the target and button
+  position persist. Check the tracking controls do not overlap either reading panel.
 - Right-click the shield in Uncollected and compare the guide with `/ag`.
 - Change wardrobe pages/slots, then right-click a different appearance.
 - Confirm unknown items clear the previous guide and disable its map button.

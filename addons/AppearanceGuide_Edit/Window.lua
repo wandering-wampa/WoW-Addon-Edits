@@ -75,11 +75,18 @@ local function CreateWindow()
     f.status:SetJustifyH("LEFT")
     f.status:SetHeight(30)
 
+    f.trackButton = Button(f, "Track this item", 150, function()
+        ns.SetActiveItem(f.itemID)
+    end)
+    f.trackButton:SetPoint("TOPLEFT", 24, -108)
+    f.activeButton = Button(f, "Open active item", 150, ns.OpenActiveItem)
+    f.activeButton:SetPoint("LEFT", f.trackButton, "RIGHT", 10, 0)
+
     f.listInset = ReadingInset(f)
     f.listInset:ClearAllPoints()
-    f.listInset:SetPoint("TOPLEFT", 18, -112)
-    f.listInset:SetPoint("TOPRIGHT", -18, -112)
-    f.listInset:SetHeight(230)
+    f.listInset:SetPoint("TOPLEFT", 18, -142)
+    f.listInset:SetPoint("TOPRIGHT", -18, -142)
+    f.listInset:SetHeight(200)
     local listTitle = f.listInset:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listTitle:SetPoint("TOPLEFT", 12, -12)
     listTitle:SetText("Quest progress")
@@ -232,6 +239,10 @@ function ns.Refresh()
     local f = ns.window
     if not f then return end
     local itemID, guide = f.itemID, ns.guides[f.itemID]
+    local isActiveItem = itemID == ns.ActiveItemID()
+    f.trackButton:SetText(isActiveItem and "Active item" or "Track this item")
+    f.trackButton:SetEnabled(not isActiveItem)
+    f.activeButton:SetShown(not isActiveItem)
     ns.offerMaps = guide and guide.scanMaps or nil
     ns.offers = ns.ScanOffers(ns.offerMaps)
     if guide and f.routeChoice == "auto" and not f.showPrerequisites and ns.TargetBlocker(guide) then
@@ -253,7 +264,7 @@ function ns.Refresh()
     f.coordinateTarget = nil
     f.listInset:SetShown(guide ~= nil)
     f.inset:ClearAllPoints()
-    f.inset:SetPoint("TOPLEFT", 18, guide and -352 or -112)
+    f.inset:SetPoint("TOPLEFT", 18, guide and -352 or -142)
     f.inset:SetPoint("BOTTOMRIGHT", -18, 54)
     local y, textIndex = 0, 0
     local function Text(value, color, font)

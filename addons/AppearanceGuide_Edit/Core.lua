@@ -1,5 +1,37 @@
 local _, ns = ...
 
+local function ValidItemID(value)
+    local id = tonumber(value)
+    return id and id > 0 and id < 2147483647 and id == math.floor(id) and id or nil
+end
+
+function ns.Settings()
+    if type(AppearanceGuideEditDB) ~= "table" then AppearanceGuideEditDB = {} end
+    local db = AppearanceGuideEditDB
+    db.activeItemID = ValidItemID(db.activeItemID) or 208198
+    local angle = tonumber(db.minimapAngle)
+    db.minimapAngle = angle and angle == angle and math.abs(angle) < math.huge and angle % 360 or 135
+    return db
+end
+
+function ns.ActiveItemID()
+    return ns.Settings().activeItemID
+end
+
+function ns.SetActiveItem(itemID)
+    local id = ValidItemID(itemID)
+    if not id then return false end
+    ns.Settings().activeItemID = id
+    if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
+    if ns.RefreshLauncher then ns.RefreshLauncher() end
+    if ns.window and ns.window:IsShown() then ns.Refresh() end
+    return true
+end
+
+function ns.OpenActiveItem()
+    ns.OpenItem(ns.ActiveItemID())
+end
+
 function ns.QuestName(step)
     return C_QuestLog.GetTitleForQuestID(step.id) or step.name
 end
@@ -202,7 +234,7 @@ function ns.PrerequisiteGuide(base)
         note=base.note, unlockNote=base.unlockNote, notices={},
         minimumLevel=base.minimumLevel}
     if base.minimumLevel and UnitLevel then
-        route.notices[#route.notices + 1] = string.format("The introduction requires level %d. Your level: %d.", base.minimumLevel, UnitLevel("player"))
+        route.notices[#route.notices + 1] = string.format("The introduction requires level %d. You're level %d.", base.minimumLevel, UnitLevel("player"))
     end
     local seen, campaigns, known = {}, {}, {}
     for _, step in ipairs(base.steps) do known[step.id] = step end
@@ -315,7 +347,7 @@ function ns.Readiness(guide, step)
         return "The game currently lists this quest as available."
     end
     if not guide.independent and guide.minimumLevel and UnitLevel and UnitLevel("player") < guide.minimumLevel then
-        return string.format("Requires level %d. Current level: %d. Continue leveling before attempting this unlock.", guide.minimumLevel, UnitLevel("player"))
+        return string.format("Requires level %d. You're level %d. Continue leveling before attempting this unlock.", guide.minimumLevel, UnitLevel("player"))
     end
     if guide.independent then
         return "This step is unfinished, but the game has not confirmed that you can accept it yet."
@@ -334,7 +366,12 @@ ns.events:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
 ns.events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 ns.events:RegisterEvent("PLAYER_LEVEL_UP")
 ns.events:RegisterEvent("QUESTLINE_UPDATE")
-ns.events:SetScript("OnEvent", function(_, event)
+ns.events:SetScript("OnEvent", function(_, event, addonName)
+    if (event == "ADDON_LOADED" and addonName == "AppearanceGuide_Edit") or event == "PLAYER_LOGIN" then
+        ns.Settings()
+        if ns.CreateMinimapButton then ns.CreateMinimapButton() end
+    end
+    if event == "GET_ITEM_INFO_RECEIVED" and ns.RefreshLauncher then ns.RefreshLauncher() end
     if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
         if ns.InstallWardrobe then ns.InstallWardrobe() end
     end
@@ -350,6 +387,20 @@ end)
 SLASH_APPEARANCEGUIDEEDIT1 = "/appearanceguide"
 SLASH_APPEARANCEGUIDEEDIT2 = "/ag"
 SlashCmdList.APPEARANCEGUIDEEDIT = function(message)
-    local id = tonumber(message:match("^%s*(%d+)%s*$")) or tonumber(message:match("item:(%d+)"))
-    ns.OpenItem(id or 208198)
+    message = (message or ""):match("^%s*(.-)%s*$")
+    if message == "" then ns.OpenActiveItem(); return end
+    local track = message:match("^track%s+(.+)$")
+    if message == "track" then
+        local id = ns.window and ns.window:IsShown() and ns.window.itemID or ns.ActiveItemID()
+        if ns.SetActiveItem(id) then ns.OpenActiveItem() end
+        return
+    end
+    local target = track or message
+    local id = ValidItemID(target:match("^(%d+)$") or target:match("item:(%d+)"))
+    if id then
+        if track then ns.SetActiveItem(id) end
+        ns.OpenItem(id)
+    else
+        print("Appearance Guide: /ag opens your active item. /ag <item ID or link> previews an item; /ag track [item ID or link] makes it active.")
+    end
 end

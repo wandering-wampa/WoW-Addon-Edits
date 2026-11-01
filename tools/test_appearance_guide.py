@@ -114,7 +114,7 @@ function rootMenu()
 end
 MenuUtil={CreateContextMenu=function(owner,fn) lastMenu=rootMenu(); fn(owner,lastMenu) end}
 ''')
-for name in ('Guides.lua', 'Core.lua', 'Window.lua', 'Wardrobe.lua'):
+for name in ('Guides.lua', 'Core.lua', 'Window.lua', 'Launcher.lua', 'Wardrobe.lua'):
     source = (ROOT / 'addons/AppearanceGuide_Edit' / name).read_text(encoding='utf-8')
     lua.execute('assert(loadstring(...))("AppearanceGuide_Edit", ns)', source)
 
@@ -390,4 +390,102 @@ assert(not ns.window.showPrerequisites and ns.window.selectedStep.id==68794)
 ns.OpenItem(999)
 assert(not ns.window.prerequisiteButton:IsShown() and ns.window.coordinateTarget==nil)
 ''')
-print('PASS: Lua 5.1, quest progress, live prerequisites, campaign expansion, navigation, UI reuse, wardrobe, and events')
+lua.execute(r'''
+-- Explicit active item: browsing never silently changes the saved goal.
+AppearanceGuideEditDB={activeItemID=208198,minimapAngle=135,keepThis='existing setting'}
+SlashCmdList.APPEARANCEGUIDEEDIT('999')
+assert(ns.window.itemID==999 and ns.ActiveItemID()==208198)
+assert(ns.window.trackButton.enabled and ns.window.activeButton:IsShown())
+assert(ns.window.inset.points[1][3]==-142) -- unknown-item content below tracking controls
+ns.window.trackButton.scripts.OnClick()
+assert(ns.ActiveItemID()==999 and ns.window.trackButton.text=='Active item')
+assert(not ns.window.trackButton.enabled and not ns.window.activeButton:IsShown())
+ns.OpenItem(208198)
+assert(ns.ActiveItemID()==999)
+ns.window.activeButton.scripts.OnClick()
+assert(ns.window.itemID==999)
+ns.window:Hide(); SlashCmdList.APPEARANCEGUIDEEDIT('  ')
+assert(ns.window:IsShown() and ns.window.itemID==999)
+SlashCmdList.APPEARANCEGUIDEEDIT('track 208198')
+assert(ns.ActiveItemID()==208198 and ns.window.itemID==208198)
+SlashCmdList.APPEARANCEGUIDEEDIT('|cffffffff|Hitem:123:0:0|h[Test item]|h|r')
+assert(ns.window.itemID==123 and ns.ActiveItemID()==208198)
+SlashCmdList.APPEARANCEGUIDEEDIT('track')
+assert(ns.ActiveItemID()==123)
+SlashCmdList.APPEARANCEGUIDEEDIT('track |Hitem:208198:0|h[Shield]|h')
+assert(ns.ActiveItemID()==208198)
+for _,id in ipairs({0,-1,1.5,math.huge,'invalid'}) do assert(not ns.SetActiveItem(id)) end
+assert(ns.ActiveItemID()==208198)
+assert(AppearanceGuideEditDB.keepThis=='existing setting')
+assert(ns.window.trackButton.points[1][3]==-108 and ns.window.listInset.points[1][3]==-142)
+function UnitLevel() return 81 end
+assert(ns.PrerequisiteGuide(ns.guides[208198]).notices[1]:find("You're level 81.",1,true))
+
+-- The minimap is a distinct launcher, created once after SavedVariables load.
+local methods=getmetatable(UIParent).__index
+function methods:GetFrameLevel() return self.frameLevel or 1 end
+function methods:SetFrameLevel(v) self.frameLevel=v end
+function methods:SetToplevel() end
+function methods:RegisterForClicks() end
+function methods:LockHighlight() self.locked=true end
+function methods:UnlockHighlight() self.locked=false end
+function methods:GetCenter() return 100,200 end
+function methods:GetEffectiveScale() return mapScale end
+function methods:SetOwner(owner) self.owner=owner end
+function methods:GetOwner() return self.owner end
+Minimap=make(); Minimap:SetSize(300,240); mapScale=.75
+local shape='ROUND'
+function GetMinimapShape() return shape end
+function GetCursorPosition() return 300*mapScale,400*mapScale end
+ns.minimapButton=nil
+ns.events.scripts.OnEvent(ns.events,'ADDON_LOADED','AnotherAddon')
+assert(ns.minimapButton==nil)
+ns.events.scripts.OnEvent(ns.events,'ADDON_LOADED','AppearanceGuide_Edit')
+local b=ns.minimapButton
+assert(b and b.parent==Minimap and b.width==31)
+ns.events.scripts.OnEvent(ns.events,'PLAYER_LOGIN')
+assert(ns.minimapButton==b)
+local function near(a,b) assert(math.abs(a-b)<.0001) end
+near(b.points[1][4],math.cos(math.rad(135))*153)
+near(b.points[1][5],math.sin(math.rad(135))*123)
+b.scripts.OnDragStart(b); b.scripts.OnUpdate(b,.016)
+near(AppearanceGuideEditDB.minimapAngle,45)
+near(b.points[1][4],math.cos(math.rad(45))*153)
+mapScale=1.7; b.scripts.OnUpdate(b,.016)
+near(AppearanceGuideEditDB.minimapAngle,45) -- scaled map uses the same cursor-space conversion
+b.scripts.OnDragStop(b); assert(not b.dragging and not b.locked)
+shape='SQUARE'; b.scripts.OnUpdate(b,1)
+near(b.points[1][4],153); near(b.points[1][5],123)
+Minimap:SetSize(400,200); Minimap.scripts.OnSizeChanged()
+near(b.points[1][4],203); near(b.points[1][5],103)
+shape='unrecognized'; ns.PositionLauncher()
+near(b.points[1][4],math.cos(math.rad(45))*203)
+ns.OpenItem(999); b.scripts.OnClick(b,'LeftButton')
+assert(ns.window.itemID==208198 and ns.window:IsShown())
+b.scripts.OnClick(b,'LeftButton'); assert(ns.window:IsShown()) -- opens rather than hiding it
+ns.SetActiveItem(123); ns.OpenItem(208198)
+b.scripts.OnClick(b,'LeftButton'); assert(ns.window.itemID==123)
+local oldIcon=C_Item.GetItemIconByID
+C_Item.GetItemIconByID=function(id) return id==123 and 987654 end
+ns.events.scripts.OnEvent(ns.events,'GET_ITEM_INFO_RECEIVED')
+assert(b.icon.texture==987654)
+b.scripts.OnEnter(b); assert(GameTooltip:GetOwner()==b and GameTooltip:IsShown())
+b.scripts.OnDragStart(b); b.scripts.OnHide(b)
+assert(not b.dragging and not GameTooltip:IsShown())
+C_Item.GetItemIconByID=oldIcon
+AppearanceGuideEditDB.minimapAngle='broken'; ns.PositionLauncher()
+assert(AppearanceGuideEditDB.minimapAngle==135)
+AppearanceGuideEditDB.activeItemID='broken'; assert(ns.ActiveItemID()==208198)
+ns.SetActiveItem(123); AppearanceGuideEditDB.minimapAngle=287
+''')
+# Reload the actual module with an already populated saved table. Existing data
+# must survive module evaluation and the addon's load/login event sequence.
+lua.execute('assert(loadstring(...))("AppearanceGuide_Edit", ns)',
+            (ROOT / 'addons/AppearanceGuide_Edit/Core.lua').read_text(encoding='utf-8'))
+lua.execute(r'''
+ns.events.scripts.OnEvent(ns.events,'ADDON_LOADED','AppearanceGuide_Edit')
+assert(ns.ActiveItemID()==123 and AppearanceGuideEditDB.minimapAngle==287)
+assert(AppearanceGuideEditDB.keepThis=='existing setting')
+SlashCmdList.APPEARANCEGUIDEEDIT(''); assert(ns.window.itemID==123)
+''')
+print('PASS: Lua 5.1, quest/prerequisite progress, saved active item, scaled minimap launcher, UI reuse, navigation, and events')
