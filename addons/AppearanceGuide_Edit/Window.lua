@@ -116,6 +116,23 @@ local function CreateWindow()
         f.showHelp = not f.showHelp
         ns.Refresh()
     end)
+    f.coordinateButton = Button(f.content, "", 406, function()
+        ns.SetArrow(f.coordinateTarget)
+    end)
+    f.coordinateButton:SetNormalFontObject("GameFontNormalSmall")
+    f.coordinateButton:SetHighlightFontObject("GameFontHighlightSmall")
+    f.coordinateButton:GetFontString():SetWidth(382)
+    f.coordinateButton:GetFontString():SetWordWrap(true)
+    f.coordinateButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(ns.HasTomTom() and "Set TomTom arrow" or "Show on map")
+        GameTooltip:AddLine(ns.HasTomTom() and "Click to point the arrow at these coordinates." or "TomTom is not loaded. Click to use the built-in map.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.coordinateButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f.coordinateButton:SetScript("OnHide", function(self)
+        if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+    end)
     return f
 end
 
@@ -213,6 +230,8 @@ function ns.Refresh()
     for _, chapter in ipairs(f.chapters) do chapter:Hide() end
     f.reference:Hide()
     f.helpButton:Hide()
+    f.coordinateButton:Hide()
+    f.coordinateTarget = nil
     f.listInset:SetShown(guide ~= nil)
     f.inset:ClearAllPoints()
     f.inset:SetPoint("TOPLEFT", 18, guide and -352 or -112)
@@ -288,7 +307,14 @@ function ns.Refresh()
         local map, x, z, pinType = ns.Waypoint(step)
         if map then
             local info = C_Map.GetMapInfo(map)
-            Text(string.format("%s: %s (%.1f, %.1f)", pinType, info and info.name or "Map", x*100, z*100), muted, "GameFontHighlightSmall")
+            f.coordinateTarget = {step=step, map=map, x=x, y=z, kind=pinType}
+            f.coordinateButton:ClearAllPoints()
+            f.coordinateButton:SetPoint("TOPLEFT", 0, -y)
+            f.coordinateButton:SetText(string.format("%s: %s (%.1f, %.1f)", pinType, info and info.name or "Map", x*100, z*100))
+            local height = math.max(28, f.coordinateButton:GetFontString():GetStringHeight() + 12)
+            f.coordinateButton:SetHeight(height)
+            f.coordinateButton:Show()
+            y = y + height + 10
             if not isActive then Text("Speak to " .. step.npc .. ".", white, "GameFontHighlightSmall") end
         else
             Text("Use Show on map to track the active quest. Its objective pin may be inside an instance.", muted, "GameFontHighlightSmall")

@@ -1,7 +1,7 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.2.1 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
+Version 0.3.0 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
 prerequisites through **Walking the Path of Tyr**. ATT and BtWQuests are not required.
 
 ## Installation and use
@@ -13,6 +13,8 @@ Restart WoW after installing this new addon, and enable it in the addon list.
 2. Right-click an appearance and select **How to obtain**.
 3. If the appearance has several item sources, choose the source to inspect.
 4. Read the next quest step and use **Show on map** for its location.
+5. Click the coordinate button in the instructions to set a **TomTom arrow**.
+   TomTom is optional; without it, this button uses the built-in map.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
 The panel uses a Retail portrait frame, plain opaque reading panels with native
@@ -53,6 +55,13 @@ location as an active objective. Clicking Show on map changes your tracked map
 destination. No automatic movement, quest acceptance, or turn-in is performed.
 Extra unlock advice and the copyable quest URL are under **Help & reference**.
 
+The coordinate button sends the exact displayed location to TomTom and explicitly
+targets its arrow, even on repeated clicks. Waypoints are temporary (not saved
+across sessions), and the addon does not remove other waypoints or change TomTom
+settings. TomTom's arrow visibility and corpse-tracking preferences still apply.
+Active quest objective coordinates are clickable too. If no coordinates are
+available, the coordinate button is hidden; Show on map still tracks the quest.
+
 ## Initial coverage and limitations
 
 - One curated reward, with 19 steps across The Silver Purpose, Tyr's Fall, and
@@ -88,6 +97,9 @@ end-to-end quest completion. In-game acceptance checks:
 - Confirm unknown items clear the previous guide and disable its map button.
 - Accept/advance/turn in a listed quest and check the next-step refresh.
 - Confirm the native collected-appearance favorites menu still works.
+- With TomTom enabled, click coordinates twice and check the arrow points to that
+  location; change steps and verify the new destination. Without TomTom, verify
+  the same button uses the native map. Unknown items must clear the old button.
 
 ## Authorship and references
 

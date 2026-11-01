@@ -30,7 +30,11 @@ function methods:SetWidth(w) self.width=w end
 function methods:SetHeight(h) self.height=h end
 function methods:GetWidth() return self.width or 490 end
 function methods:GetHeight() return self.height or 640 end
-function methods:SetText(t) self.text = t end
+function methods:SetText(t) self.text = t; if self.fontString then self.fontString.text=t end end
+function methods:GetFontString()
+ if not self.fontString then self.fontString=make(self); self.fontString.text=self.text end
+ return self.fontString
+end
 function methods:GetStringHeight() return 14 * math.max(1, math.ceil(#(self.text or '') * 7 / (self.width or 400))) end
 function methods:SetEnabled(v) self.enabled=v end
 function methods:SetVerticalScroll(v) self.scroll=v end
@@ -43,7 +47,8 @@ function methods:SetColorTexture(...) self.color={...} end
 function methods:SetTexture(v) self.texture=v end
 for _, key in ipairs({'SetScale','SetClampedToScreen','SetFrameStrata','SetMovable','EnableMouse',
  'RegisterForDrag','StartMoving','StopMovingOrSizing','SetBackdrop','SetBackdropColor','SetTextColor','EnableMouseWheel',
- 'SetJustifyH','SetWordWrap','SetFontObject','SetHighlightTexture','SetAutoFocus','HighlightText','ClearFocus'}) do
+ 'SetJustifyH','SetWordWrap','SetFontObject','SetHighlightTexture','SetAutoFocus','HighlightText','ClearFocus',
+ 'SetNormalFontObject','SetHighlightFontObject'}) do
  methods[key] = function() end
 end
 function make(parent)
@@ -151,9 +156,36 @@ ns.Navigate(step); assert(userPin==nil and tracked==step.id and details==step.id
 combat=true; openedMap=nil; ns.Navigate(step); assert(openedMap==nil); combat=false
 active={}
 
+-- Optional TomTom: use displayed coordinates and refocus repeated waypoints.
+local target={step=step,map=2112,x=.5821,y=.3478,kind='Quest giver'}
+ns.SetArrow(target); assert(openedMap==2112) -- no TomTom: native navigation
+local pins, arrowCalls = {}, 0
+TomTom={profile={arrow={arrival=20}}, AddWaypoint=function(self,m,x,y,opts)
+ assert(x>=0 and x<=1 and y>=0 and y<=1)
+ assert(opts.persistent==false and opts.crazy==false and opts.from=='AppearanceGuide_Edit')
+ local key=opts.title
+ pins[key]=pins[key] or {m,x,y,title=key}
+ return pins[key]
+end, SetCrazyArrow=function(self,uid,distance,title)
+ arrowCalls=arrowCalls+1; arrowTarget=uid
+ assert(distance==20 and title==uid.title)
+end}
+active[step.id]=true; waypoint={2025,.1,.2}
+ns.SetArrow(target); ns.SetArrow(target)
+assert(arrowCalls==2 and arrowTarget[1]==2112 and arrowTarget[2]==.5821)
+local count=0; for _ in pairs(pins) do count=count+1 end; assert(count==1)
+local add=TomTom.AddWaypoint
+TomTom.AddWaypoint=function() return nil end
+ns.SetArrow(target); assert(arrowCalls==2)
+TomTom.AddWaypoint=add
+ns.SetArrow(nil); assert(arrowCalls==2)
+TomTom=nil; active={}; waypoint=nil
+
 ns.OpenItem(208198)
 assert(ns.window:IsShown() and ns.window.mapButton.enabled)
 assert(ns.window.selectedStep.id==67074)
+assert(ns.window.coordinateButton:IsShown() and ns.window.coordinateTarget.map==2112)
+ns.window.coordinateButton.scripts.OnClick(); assert(openedMap==2112)
 assert(ns.window.nextButton.text=='Current quest' and not ns.window.nextButton.enabled)
 assert(ns.window.listInset.template=='InsetFrameTemplate' and ns.window.inset.template=='InsetFrameTemplate')
 assert(ns.window.listInset.readingBackground.color[4]==1 and ns.window.inset.readingBackground.color[4]==1)
@@ -173,6 +205,11 @@ ns.window.rows[1].scripts.OnClick()
 assert(ns.window.followNext) -- clicking the current row must keep automatic progress following
 active[75633]=true; ns.Refresh()
 assert(ns.window.selectedStep.id==75633)
+assert(not ns.window.coordinateButton:IsShown() and ns.window.coordinateTarget==nil)
+waypoint={2025,.4,.6}; ns.Refresh()
+assert(ns.window.coordinateButton:IsShown() and ns.window.coordinateTarget.kind=='Quest objective')
+assert(ns.window.coordinateTarget.x==.4 and ns.window.coordinateTarget.y==.6)
+waypoint=nil
 ns.window.listScroll:SetHeight(184)
 complete[67074]=true; ns.window.focusList=true; ns.Refresh()
 assert(ns.window.status.text:find('1 / 19 quests completed',1,true))
@@ -200,6 +237,7 @@ for i,row in ipairs(ns.window.rows) do
 end
 ns.OpenItem(999)
 assert(not ns.window.mapButton.enabled and ns.window.selectedStep==nil)
+assert(not ns.window.coordinateButton:IsShown() and ns.window.coordinateTarget==nil)
 assert(not ns.window.nextButton.enabled)
 assert(not ns.window.listInset:IsShown() and not ns.window.helpButton:IsShown())
 for _,row in ipairs(ns.window.rows) do assert(not row:IsShown()) end

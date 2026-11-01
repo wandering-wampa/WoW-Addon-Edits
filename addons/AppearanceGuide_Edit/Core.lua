@@ -98,6 +98,31 @@ function ns.Navigate(step)
     end
 end
 
+function ns.HasTomTom()
+    return TomTom and type(TomTom.AddWaypoint) == "function" and type(TomTom.SetCrazyArrow) == "function"
+end
+
+-- Use the coordinates displayed on the button, rather than silently choosing a
+-- different destination if live quest data changes between display and click.
+function ns.SetArrow(target)
+    if not target then return end
+    if not ns.HasTomTom() then
+        ns.Navigate(target.step)
+        return
+    end
+    local title = "Appearance Guide: " .. ns.QuestName(target.step)
+    if target.kind == "Quest giver" then title = title .. " - " .. target.step.npc end
+    local uid = TomTom:AddWaypoint(target.map, target.x, target.y, {
+        title=title, from="AppearanceGuide_Edit", persistent=false, crazy=false,
+    })
+    if uid then
+        local arrival = TomTom.profile and TomTom.profile.arrow and TomTom.profile.arrow.arrival or 15
+        -- AddWaypoint returns existing waypoints early, so explicitly retarget
+        -- the arrow on every click, including a repeated click at the same pin.
+        TomTom:SetCrazyArrow(uid, arrival, title)
+    end
+end
+
 ns.events = CreateFrame("Frame")
 ns.events:RegisterEvent("ADDON_LOADED")
 ns.events:RegisterEvent("PLAYER_LOGIN")
