@@ -2,6 +2,23 @@ local _, ns = ...
 local gold, white, muted = {1, .82, 0}, {.92, .89, .83}, {.65, .65, .65}
 local colors = {Complete={.35, .85, .4}, Passed=muted, Next=gold,
     ["In progress"]={.4, .8, 1}, ["Ready to turn in"]=gold, Later=muted}
+local labels = {Complete="Completed", Passed="Earlier step (inferred)", Next="Start here",
+    ["In progress"]="Current quest", ["Ready to turn in"]="Ready to turn in", Later="Not started"}
+
+local function Scroll(parent, top)
+    local scroll = CreateFrame("ScrollFrame", nil, parent)
+    scroll:SetPoint("TOPLEFT", 12, -top)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(412, 1)
+    scroll:SetScrollChild(content)
+    scroll:EnableMouseWheel(true)
+    scroll.ScrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
+    scroll.ScrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 10, -2)
+    scroll.ScrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 10, 2)
+    ScrollUtil.InitScrollFrameWithScrollBar(scroll, scroll.ScrollBar)
+    return scroll, content
+end
 
 local function Button(parent, label, width, callback)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -40,23 +57,29 @@ local function CreateWindow()
     f.itemName:SetPoint("TOPLEFT", 70, -42)
     f.itemName:SetPoint("TOPRIGHT", -22, -42)
     f.itemName:SetJustifyH("LEFT")
-    f.itemName:SetHeight(42)
+    f.itemName:SetHeight(28)
     f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f.status:SetPoint("TOPLEFT", 24, -92)
-    f.status:SetPoint("TOPRIGHT", -24, -92)
+    f.status:SetPoint("TOPLEFT", 24, -74)
+    f.status:SetPoint("TOPRIGHT", -24, -74)
     f.status:SetJustifyH("LEFT")
     f.status:SetHeight(30)
 
-    f.inset = CreateFrame("Frame", nil, f, "InsetFrameTemplate")
-    f.inset:SetPoint("TOPLEFT", 18, -130)
+    f.listInset = CreateFrame("Frame", nil, f, "CollectionsBackgroundTemplate")
+    f.listInset:ClearAllPoints()
+    f.listInset:SetPoint("TOPLEFT", 18, -112)
+    f.listInset:SetPoint("TOPRIGHT", -18, -112)
+    f.listInset:SetHeight(230)
+    local listTitle = f.listInset:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    listTitle:SetPoint("TOPLEFT", 12, -12)
+    listTitle:SetText("Quest progress")
+    f.listScroll, f.listContent = Scroll(f.listInset, 34)
+
+    f.inset = CreateFrame("Frame", nil, f, "CollectionsBackgroundTemplate")
+    f.inset:ClearAllPoints()
+    f.inset:SetPoint("TOPLEFT", 18, -352)
     f.inset:SetPoint("BOTTOMRIGHT", -18, 54)
-    f.scroll = CreateFrame("ScrollFrame", nil, f.inset, "UIPanelScrollFrameTemplate")
-    f.scroll:SetPoint("TOPLEFT", 12, -12)
-    f.scroll:SetPoint("BOTTOMRIGHT", -30, 12)
-    f.content = CreateFrame("Frame", nil, f.scroll)
-    f.content:SetSize(412, 1)
-    f.scroll:SetScrollChild(f.content)
-    f.texts, f.rows = {}, {}
+    f.scroll, f.content = Scroll(f.inset, 12)
+    f.texts, f.rows, f.chapters = {}, {}, {}
 
     f.mapButton = Button(f, "Show on map", 140, function()
         if f.selectedStep then ns.Navigate(f.selectedStep) end
@@ -64,6 +87,7 @@ local function CreateWindow()
     f.mapButton:SetPoint("BOTTOMLEFT", 24, 17)
     f.nextButton = Button(f, "Next step", 110, function()
         f.followNext = true
+        f.focusList = true
         ns.Refresh()
         f.scroll:SetVerticalScroll(0)
     end)
@@ -77,7 +101,90 @@ local function CreateWindow()
     f.reference:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.reference:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     f.reference:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    f.helpButton = Button(f.content, "Help & reference", 140, function()
+        f.showHelp = not f.showHelp
+        ns.Refresh()
+    end)
     return f
+end
+
+local function RefreshList(f, guide, progress)
+    local y, chapterIndex, chapter = 0, 0, nil
+    if not guide then
+        f.listContent:SetHeight(1)
+        return
+    end
+    for i, entry in ipairs(guide.steps) do
+        if chapter ~= entry.chapter then
+            chapter, chapterIndex = entry.chapter, chapterIndex + 1
+            local heading = f.chapters[chapterIndex]
+            if not heading then
+                heading = f.listContent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                f.chapters[chapterIndex] = heading
+            end
+            heading:ClearAllPoints()
+            heading:SetPoint("TOPLEFT", 6, -y)
+            heading:SetWidth(394)
+            heading:SetJustifyH("LEFT")
+            heading:SetText(chapter)
+            heading:Show()
+            y = y + heading:GetStringHeight() + 10
+        end
+        local row = f.rows[i]
+        if not row then
+            row = CreateFrame("Button", nil, f.listContent)
+            row:SetWidth(406)
+            row.bg = row:CreateTexture(nil, "BACKGROUND")
+            row.bg:SetAllPoints()
+            row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+            row.icon = row:CreateTexture(nil, "ARTWORK")
+            row.icon:SetPoint("TOPLEFT", 5, -6)
+            row.icon:SetSize(18, 18)
+            row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.label:SetPoint("TOPLEFT", 30, -5)
+            row.label:SetWidth(368)
+            row.label:SetJustifyH("LEFT")
+            row.state = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            row.state:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -3)
+            f.rows[i] = row
+        end
+        local index = i
+        row:SetScript("OnClick", function()
+            f.selectedIndex, f.followNext, f.showHelp = index, false, false
+            ns.Refresh()
+            f.scroll:SetVerticalScroll(0)
+        end)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 0, -y)
+        row.offset = y
+        local state = progress.states[i]
+        row.label:SetText(ns.QuestName(entry))
+        row.label:SetTextColor(unpack(state == "Complete" and colors.Complete or white))
+        row.state:SetText(labels[state])
+        row.state:SetTextColor(unpack(colors[state] or muted))
+        row.icon:Hide()
+        if state == "Complete" then
+            row.icon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+            row.icon:Show()
+        elseif state == "Next" or state == "In progress" or state == "Ready to turn in" then
+            row.icon:SetTexture(state == "Next" and "Interface\\GossipFrame\\AvailableQuestIcon" or "Interface\\GossipFrame\\ActiveQuestIcon")
+            row.icon:Show()
+        end
+        row.bg:SetColorTexture(.65, .5, .2, i == f.selectedIndex and .18 or .025)
+        local height = row.label:GetStringHeight() + 25
+        row:SetHeight(height)
+        row:Show()
+        y = y + height + 2
+    end
+    f.listContent:SetHeight(y + 4)
+    f.listScroll:UpdateScrollChildRect()
+    if f.focusList or (f.followNext and f.lastNext ~= progress.nextIndex) then
+        -- Keep the preceding two steps in view, so completed history stays visible.
+        local start = math.max(1, (f.selectedIndex or 1) - 2)
+        local offset = start == 1 and 0 or f.rows[start].offset
+        f.listScroll:SetVerticalScroll(math.min(offset, math.max(0, y + 4 - f.listScroll:GetHeight())))
+    end
+    f.lastNext, f.focusList = progress.nextIndex, false
 end
 
 function ns.Refresh()
@@ -90,7 +197,13 @@ function ns.Refresh()
     if portrait then portrait:SetTexture(C_Item.GetItemIconByID(itemID) or 134400) end
     for _, text in ipairs(f.texts) do text:Hide() end
     for _, row in ipairs(f.rows) do row:Hide() end
+    for _, chapter in ipairs(f.chapters) do chapter:Hide() end
     f.reference:Hide()
+    f.helpButton:Hide()
+    f.listInset:SetShown(guide ~= nil)
+    f.inset:ClearAllPoints()
+    f.inset:SetPoint("TOPLEFT", 18, guide and -352 or -112)
+    f.inset:SetPoint("BOTTOMRIGHT", -18, 54)
     local y, textIndex = 0, 0
     local function Text(value, color, font)
         textIndex = textIndex + 1
@@ -118,24 +231,35 @@ function ns.Refresh()
         Text("This first version covers Tyr's Guard Bulwark. Other appearances can be opened here, but their prerequisite chains have not been added yet.")
         Text("Item reference (click and press Ctrl+C)", muted, "GameFontHighlightSmall")
         f.reference:SetText("https://www.wowhead.com/item=" .. itemID)
+        RefreshList(f)
     else
         local progress = ns.Progress(guide)
         local collected = ns.IsCollected(itemID)
+        local summary = string.format("%s: %d / %d quests completed", UnitName("player"), progress.completedCount, progress.total)
+        if progress.passedCount > 0 then summary = summary .. " - " .. progress.passedCount .. " earlier steps passed" end
         if collected then
-            f.status:SetText("Appearance collected. Quest progress below is for this character.")
+            f.status:SetText(summary .. "\nAppearance collected")
         elseif not progress.nextIndex then
-            f.status:SetText("Reward quest complete. Use the shield item to learn its appearance.")
+            f.status:SetText(summary .. "\nReward quest complete - use the shield to learn its appearance")
+        elseif progress.completedCount == 0 and progress.passedCount == 0 and progress.states[1] == "Next" then
+            f.status:SetText(summary .. "\nNo progress found in this chain on this character")
         else
-            f.status:SetText("Quest reward - Dragonflight\nProgress checked on " .. UnitName("player"))
+            f.status:SetText(summary .. string.format("\nCurrent step: %d of %d - %s", progress.nextIndex, progress.total, labels[progress.states[progress.nextIndex]]))
         end
         if f.followNext or not f.selectedIndex then
             f.selectedIndex = progress.nextIndex or #guide.steps
         end
         local step = guide.steps[f.selectedIndex]
         f.selectedStep = step
-        Text(progress.states[f.selectedIndex] .. ": " .. ns.QuestName(step), gold, "GameFontNormalLarge")
+        RefreshList(f, guide, progress)
+        Text(labels[progress.states[f.selectedIndex]] .. ": " .. ns.QuestName(step), gold, "GameFontNormal")
         Text(step.chapter, muted, "GameFontHighlightSmall")
-        Text(step.note or ("Continue with " .. step.npc .. ". Accept the quest and follow the objectives shown below or in your quest tracker."))
+        if progress.states[f.selectedIndex] == "Complete" then
+            Text("Completed on this character.", colors.Complete)
+        elseif progress.states[f.selectedIndex] == "Passed" then
+            Text("A later quest is active or complete. This earlier step was passed or skipped; its own completion flag is not set.", muted)
+        end
+        Text(step.note or ("Continue with " .. step.npc .. ". Follow the quest objectives in your tracker."))
         local isActive = C_QuestLog.IsOnQuest(step.id)
         if isActive then
             local objectives = C_QuestLog.GetQuestObjectives(step.id) or {}
@@ -155,53 +279,20 @@ function ns.Refresh()
         else
             Text("Use Show on map to track the active quest. Its objective pin may be inside an instance.", muted, "GameFontHighlightSmall")
         end
-        if f.selectedIndex == 1 then Text(guide.unlockNote, muted, "GameFontHighlightSmall") end
-        Text(guide.note, muted, "GameFontHighlightSmall")
-        Text("Quest reference (click and press Ctrl+C)", muted, "GameFontHighlightSmall")
-        f.reference:SetText("https://www.wowhead.com/quest=" .. step.id)
-        f.reference:ClearAllPoints()
-        f.reference:SetPoint("TOPLEFT", 6, -y)
-        f.reference:Show()
+        f.helpButton:ClearAllPoints()
+        f.helpButton:SetPoint("TOPLEFT", 0, -y)
+        f.helpButton:SetText(f.showHelp and "Hide help" or "Help & reference")
+        f.helpButton:Show()
         y = y + 36
-        Text("Quest steps", gold, "GameFontNormalLarge")
-        Text("Select a step to inspect it. Passed means later progress was detected; it is not a completion flag.", muted, "GameFontHighlightSmall")
-        local chapter
-        for i, entry in ipairs(guide.steps) do
-            if chapter ~= entry.chapter then
-                chapter = entry.chapter
-                Text(chapter, gold, "GameFontNormal")
-            end
-            local row = f.rows[i]
-            if not row then
-                row = CreateFrame("Button", nil, f.content)
-                row:SetWidth(406)
-                row.bg = row:CreateTexture(nil, "BACKGROUND")
-                row.bg:SetAllPoints()
-                row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-                row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                row.label:SetPoint("TOPLEFT", 10, -6)
-                row.label:SetWidth(386)
-                row.label:SetJustifyH("LEFT")
-                row.state = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                row.state:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -4)
-                f.rows[i] = row
-            end
-            local index = i
-            row:SetScript("OnClick", function()
-                f.selectedIndex, f.followNext = index, false
-                ns.Refresh()
-                f.scroll:SetVerticalScroll(0)
-            end)
-            row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", 0, -y)
-            row.label:SetText(ns.QuestName(entry))
-            row.state:SetText(progress.states[i])
-            row.state:SetTextColor(unpack(colors[progress.states[i]] or muted))
-            row.bg:SetColorTexture(.65, .5, .2, i == f.selectedIndex and .22 or .04)
-            local height = row.label:GetStringHeight() + 28
-            row:SetHeight(height)
-            row:Show()
-            y = y + height + 4
+        if f.showHelp then
+            if f.selectedIndex == 1 then Text(guide.unlockNote, muted, "GameFontHighlightSmall") end
+            Text(guide.note, muted, "GameFontHighlightSmall")
+            Text("Quest reference (click and press Ctrl+C)", muted, "GameFontHighlightSmall")
+            f.reference:SetText("https://www.wowhead.com/quest=" .. step.id)
+            f.reference:ClearAllPoints()
+            f.reference:SetPoint("TOPLEFT", 6, -y)
+            f.reference:Show()
+            y = y + 36
         end
     end
     if not guide then
@@ -213,11 +304,14 @@ function ns.Refresh()
     f.mapButton:SetEnabled(f.selectedStep ~= nil)
     f.nextButton:SetEnabled(guide ~= nil)
     f.content:SetHeight(math.max(1, y + 4))
+    f.scroll:UpdateScrollChildRect()
+    f.scroll:SetVerticalScroll(math.min(f.scroll:GetVerticalScroll(), f.scroll:GetVerticalScrollRange()))
 end
 
 function ns.OpenItem(itemID)
     local f = ns.window or CreateWindow()
     f.itemID, f.selectedIndex, f.followNext = itemID, nil, true
+    f.focusList, f.showHelp = true, false
     if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
     local guide = ns.guides[itemID]
     if guide then

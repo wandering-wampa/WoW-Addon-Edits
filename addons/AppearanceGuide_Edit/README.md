@@ -1,7 +1,7 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.1.0 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
+Version 0.2.0 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
 prerequisites through **Walking the Path of Tyr**. ATT and BtWQuests are not required.
 
 ## Installation and use
@@ -15,8 +15,9 @@ Restart WoW after installing this new addon, and enable it in the addon list.
 4. Read the next quest step and use **Show on map** for its location.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
-The panel uses an opaque Retail portrait frame and inset, wraps long quest names,
-and scrolls independently of the wardrobe. Drag its frame to reposition it.
+The panel uses an opaque Retail portrait frame, Blizzard's Collections backgrounds,
+and native slim scrollbars. The quest list stays above a separately scrolling
+instruction panel. Long quest names wrap. Drag the frame to reposition it.
 
 ## Commands
 
@@ -28,10 +29,17 @@ and scrolls independently of the wardrobe. Drag its frame to reposition it.
 
 The guide reads the logged-in character's quest flags and active objectives.
 Later active/completed steps take precedence over earlier missing flags, which
-can occur after campaign skips. Such earlier steps are marked **Passed**, not
-**Complete**. Other characters' completion flags are not substituted.
+can occur after campaign skips. Such earlier steps are marked **Earlier step
+(inferred)**, not **Completed**. Other characters' completion flags are not substituted.
 
-Progress refreshes on quest events while the panel is open. **Next step** follows
+The header shows the current character's confirmed completion count and current
+step. Green check icons mark **Completed** quests. Active quests use a quest
+marker and **Current quest** or **Ready to turn in**. Inferred earlier steps have
+their own label and are not added to the completed count. All prior steps remain
+in the list; opening a guide or selecting **Next step** brings the current step
+into view with its preceding steps. If no progress is found, the header says so.
+
+Progress refreshes on quest events and entering the world while the panel is open. **Next step** follows
 the next unfinished step; selecting a row lets you inspect that step until you
 select Next step again. The appearance's collected status is checked separately
 from character quest completion.
@@ -41,6 +49,7 @@ guide prefers the game's current objective waypoint, falling back to quest
 tracking/details when a coordinate is unavailable. It does not use an old giver
 location as an active objective. Clicking Show on map changes your tracked map
 destination. No automatic movement, quest acceptance, or turn-in is performed.
+Extra unlock advice and the copyable quest URL are under **Help & reference**.
 
 ## Initial coverage and limitations
 

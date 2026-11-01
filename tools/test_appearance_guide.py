@@ -20,6 +20,7 @@ end
 function methods:RegisterEvent() end
 function methods:Show() self.shown = true end
 function methods:Hide() self.shown = false end
+function methods:SetShown(v) self.shown = v end
 function methods:IsShown() return self.shown ~= false end
 function methods:SetPoint(...) self.points[#self.points + 1] = {...} end
 function methods:ClearAllPoints() self.points = {} end
@@ -33,12 +34,15 @@ function methods:SetText(t) self.text = t end
 function methods:GetStringHeight() return 14 * math.max(1, math.ceil(#(self.text or '') * 7 / (self.width or 400))) end
 function methods:SetEnabled(v) self.enabled=v end
 function methods:SetVerticalScroll(v) self.scroll=v end
+function methods:GetVerticalScroll() return self.scroll or 0 end
+function methods:GetVerticalScrollRange() return math.max(0,self.child:GetHeight()-self:GetHeight()) end
+function methods:UpdateScrollChildRect() end
 function methods:SetScrollChild(v) self.child=v end
 function methods:GetParent() return self.parent end
 function methods:SetColorTexture(...) self.color={...} end
 function methods:SetTexture(v) self.texture=v end
 for _, key in ipairs({'SetScale','SetClampedToScreen','SetFrameStrata','SetMovable','EnableMouse',
- 'RegisterForDrag','StartMoving','StopMovingOrSizing','SetBackdrop','SetBackdropColor','SetTextColor',
+ 'RegisterForDrag','StartMoving','StopMovingOrSizing','SetBackdrop','SetBackdropColor','SetTextColor','EnableMouseWheel',
  'SetJustifyH','SetWordWrap','SetFontObject','SetHighlightTexture','SetAutoFocus','HighlightText','ClearFocus'}) do
  methods[key] = function() end
 end
@@ -86,6 +90,7 @@ function UnitName() return 'Test character' end
 function IsModifiedClick() return modified or false end
 function tinsert(t,v) table.insert(t,v) end
 C_Timer={After=function(_,fn) timers[#timers+1]=fn end}
+ScrollUtil={InitScrollFrameWithScrollBar=function(scroll,bar) scroll.boundBar=bar end}
 function hooksecurefunc(obj,key,fn)
  local old=obj[key]; obj[key]=function(...) old(...); fn(...) end
 end
@@ -112,10 +117,11 @@ local g=ns.guides[208198]
 assert(#g.steps==19)
 assert(ns.Progress(g).nextIndex==1)
 complete[67074]=true
-assert(ns.Progress(g).nextIndex==2)
+assert(ns.Progress(g).nextIndex==2 and ns.Progress(g).completedCount==1)
 active[75633]=true
 local p=ns.Progress(g)
 assert(p.nextIndex==17 and p.states[2]=='Passed' and p.states[17]=='In progress')
+assert(p.completedCount==1 and p.passedCount==15 and p.total==19)
 ready[75633]=true
 assert(ns.Progress(g).states[17]=='Ready to turn in')
 complete[76171]=true
@@ -131,6 +137,7 @@ assert(#ns.ResolveSources(11)==0)
 sources[208198]={{isCollected=true}}
 assert(ns.IsCollected(208198))
 assert(not ns.IsCollected(111))
+sources[208198]={}
 
 local step=g.steps[1]
 local m,x,y=ns.Waypoint(step)
@@ -146,16 +153,36 @@ active={}
 ns.OpenItem(208198)
 assert(ns.window:IsShown() and ns.window.mapButton.enabled)
 assert(ns.window.selectedStep.id==67074)
+assert(ns.window.listScroll.boundBar and ns.window.scroll.boundBar)
+assert(ns.window.listInset:IsShown() and not ns.window.reference:IsShown())
+ns.window.helpButton.scripts.OnClick()
+assert(ns.window.reference:IsShown())
 local originalRow=ns.window.rows[1]
 ns.window.rows[17].scripts.OnClick()
 assert(ns.window.selectedStep.id==75633 and not ns.window.followNext)
+assert(not ns.window.reference:IsShown())
 ns.window.nextButton.scripts.OnClick()
 assert(ns.window.selectedStep.id==67074 and ns.window.followNext)
 active[75633]=true; ns.Refresh()
 assert(ns.window.selectedStep.id==75633)
+ns.window.listScroll:SetHeight(184)
+complete[67074]=true; ns.window.focusList=true; ns.Refresh()
+assert(ns.window.status.text:find('1 / 19 quests completed',1,true))
+assert(ns.window.rows[1].state.text=='Completed')
+assert(ns.window.rows[1].icon.texture=='Interface\\RaidFrame\\ReadyCheck-Ready')
+assert(ns.window.rows[1].icon:IsShown())
+assert(ns.window.rows[2].state.text=='Earlier step (inferred)' and not ns.window.rows[2].icon:IsShown())
+assert(ns.window.rows[17].state.text=='Current quest')
+assert(ns.window.listScroll.scroll>0)
+assert(ns.window.rows[17].offset+ns.window.rows[17].height <= ns.window.listScroll.scroll+184)
+complete[75633]=true; active[75633]=nil; ns.Refresh()
+assert(ns.window.selectedStep.id==75634 and ns.window.rows[17].state.text=='Completed')
+complete={}; active={}; ns.OpenItem(208198)
+assert(not ns.window.rows[1].icon.texture:find('ReadyCheck%-Ready'))
+assert(ns.window.status.text:find('No progress found',1,true))
 assert(ns.window.rows[1]==originalRow)
 for i,row in ipairs(ns.window.rows) do
- assert(row.points[1][3] < 0 and row.height>=42)
+ assert(row.points[1][3] < 0 and row.height>=row.label:GetStringHeight()+25)
  if i>1 then
   local previous=ns.window.rows[i-1]
   assert(-row.points[1][3] >= -previous.points[1][3]+previous.height)
@@ -163,6 +190,7 @@ for i,row in ipairs(ns.window.rows) do
 end
 ns.OpenItem(999)
 assert(not ns.window.mapButton.enabled and ns.window.selectedStep==nil)
+assert(not ns.window.listInset:IsShown() and not ns.window.helpButton:IsShown())
 for _,row in ipairs(ns.window.rows) do assert(not row:IsShown()) end
 ns.OpenItem(208198)
 assert(ns.window.rows[1]:IsShown())

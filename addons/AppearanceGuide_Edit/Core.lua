@@ -8,21 +8,27 @@ end
 -- prerequisites. A later active/completed quest proves earlier steps passed,
 -- even when a campaign skip did not set every earlier completion flag.
 function ns.Progress(guide)
-    local frontier = 0
+    local frontier, completed, active = 0, {}, {}
     for i, step in ipairs(guide.steps) do
-        if C_QuestLog.IsQuestFlaggedCompleted(step.id) then
+        completed[i] = C_QuestLog.IsQuestFlaggedCompleted(step.id)
+        active[i] = C_QuestLog.IsOnQuest(step.id)
+        if completed[i] then
             frontier = math.max(frontier, i)
-        elseif C_QuestLog.IsOnQuest(step.id) then
+        elseif active[i] then
             frontier = math.max(frontier, i - 1)
         end
     end
-    local result = {states={}, nextIndex=frontier + 1}
+    local result = {states={}, nextIndex=frontier + 1, completedCount=0, passedCount=0, total=#guide.steps}
     for i, step in ipairs(guide.steps) do
         local status
-        if C_QuestLog.IsQuestFlaggedCompleted(step.id) then status = "Complete"
-        elseif C_QuestLog.IsOnQuest(step.id) then
+        if completed[i] then
+            status = "Complete"
+            result.completedCount = result.completedCount + 1
+        elseif active[i] then
             status = C_QuestLog.IsComplete(step.id) and "Ready to turn in" or "In progress"
-        elseif i <= frontier then status = "Passed"
+        elseif i <= frontier then
+            status = "Passed"
+            result.passedCount = result.passedCount + 1
         elseif i == result.nextIndex then status = "Next"
         else status = "Later" end
         result.states[i] = status
@@ -95,6 +101,7 @@ end
 ns.events = CreateFrame("Frame")
 ns.events:RegisterEvent("ADDON_LOADED")
 ns.events:RegisterEvent("PLAYER_LOGIN")
+ns.events:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.events:RegisterEvent("QUEST_LOG_UPDATE")
 ns.events:RegisterEvent("QUEST_TURNED_IN")
 ns.events:RegisterEvent("QUEST_DATA_LOAD_RESULT")
