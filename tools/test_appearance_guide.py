@@ -7,6 +7,8 @@ from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
+assert '## SavedVariablesPerCharacter: AppearanceGuideEditCharDB' in (
+    ROOT / 'addons/AppearanceGuide_Edit/AppearanceGuide_Edit.toc').read_text(encoding='utf-8')
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 ns = {}; complete = {}; active = {}; ready = {}; sources = {}; items = {}
@@ -393,6 +395,7 @@ assert(not ns.window.prerequisiteButton:IsShown() and ns.window.coordinateTarget
 lua.execute(r'''
 -- Explicit active item: browsing never silently changes the saved goal.
 AppearanceGuideEditDB={activeItemID=208198,minimapAngle=135,keepThis='existing setting'}
+AppearanceGuideEditCharDB=nil
 SlashCmdList.APPEARANCEGUIDEEDIT('999')
 assert(ns.window.itemID==999 and ns.ActiveItemID()==208198)
 assert(ns.window.trackButton.enabled and ns.window.activeButton:IsShown())
@@ -475,7 +478,7 @@ assert(not b.dragging and not GameTooltip:IsShown())
 C_Item.GetItemIconByID=oldIcon
 AppearanceGuideEditDB.minimapAngle='broken'; ns.PositionLauncher()
 assert(AppearanceGuideEditDB.minimapAngle==135)
-AppearanceGuideEditDB.activeItemID='broken'; assert(ns.ActiveItemID()==208198)
+AppearanceGuideEditCharDB.activeItemID='broken'; assert(ns.ActiveItemID()==208198)
 ns.SetActiveItem(123); AppearanceGuideEditDB.minimapAngle=287
 ''')
 # Reload the actual module with an already populated saved table. Existing data
@@ -487,5 +490,28 @@ ns.events.scripts.OnEvent(ns.events,'ADDON_LOADED','AppearanceGuide_Edit')
 assert(ns.ActiveItemID()==123 and AppearanceGuideEditDB.minimapAngle==287)
 assert(AppearanceGuideEditDB.keepThis=='existing setting')
 SlashCmdList.APPEARANCEGUIDEEDIT(''); assert(ns.window.itemID==123)
+
+-- The old shared target is imported once; alts keep independent saved tables.
+AppearanceGuideEditDB={activeItemID=456,minimapAngle=287,keepThis='existing setting'}
+AppearanceGuideEditCharDB=nil
+ns.events.scripts.OnEvent(ns.events,'ADDON_LOADED','AppearanceGuide_Edit')
+assert(ns.ActiveItemID()==456 and AppearanceGuideEditDB.activeItemID==nil)
+local characterA=AppearanceGuideEditCharDB
+ns.SetActiveItem(123)
+AppearanceGuideEditCharDB=nil -- a different character's SavedVariables file
+ns.events.scripts.OnEvent(ns.events,'PLAYER_LOGIN')
+assert(ns.ActiveItemID()==208198) -- not copied from the first character
+local characterB=AppearanceGuideEditCharDB
+ns.SetActiveItem(789)
+assert(characterA.activeItemID==123 and characterB.activeItemID==789)
+AppearanceGuideEditCharDB=characterA
+SlashCmdList.APPEARANCEGUIDEEDIT(''); assert(ns.window.itemID==123)
+AppearanceGuideEditCharDB=characterB
+ns.minimapButton.scripts.OnClick(ns.minimapButton,'LeftButton')
+assert(ns.window.itemID==789)
+assert(AppearanceGuideEditDB.minimapAngle==287 and AppearanceGuideEditDB.keepThis=='existing setting')
+AppearanceGuideEditDB.activeItemID=456
+ns.CharacterSettings()
+assert(characterB.activeItemID==789 and AppearanceGuideEditDB.activeItemID==nil) -- existing target wins
 ''')
 print('PASS: Lua 5.1, quest/prerequisite progress, saved active item, scaled minimap launcher, UI reuse, navigation, and events')

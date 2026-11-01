@@ -8,20 +8,31 @@ end
 function ns.Settings()
     if type(AppearanceGuideEditDB) ~= "table" then AppearanceGuideEditDB = {} end
     local db = AppearanceGuideEditDB
-    db.activeItemID = ValidItemID(db.activeItemID) or 208198
     local angle = tonumber(db.minimapAngle)
     db.minimapAngle = angle and angle == angle and math.abs(angle) < math.huge and angle % 360 or 135
     return db
 end
 
+function ns.CharacterSettings()
+    local account = ns.Settings()
+    if type(AppearanceGuideEditCharDB) ~= "table" then AppearanceGuideEditCharDB = {} end
+    local character = AppearanceGuideEditCharDB
+    -- Consume the old shared target once, on the first character to load this
+    -- version. Never overwrite an existing character target or seed every alt
+    -- from another character's choice.
+    character.activeItemID = ValidItemID(character.activeItemID) or ValidItemID(account.activeItemID) or 208198
+    account.activeItemID = nil
+    return character
+end
+
 function ns.ActiveItemID()
-    return ns.Settings().activeItemID
+    return ns.CharacterSettings().activeItemID
 end
 
 function ns.SetActiveItem(itemID)
     local id = ValidItemID(itemID)
     if not id then return false end
-    ns.Settings().activeItemID = id
+    ns.CharacterSettings().activeItemID = id
     if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
     if ns.RefreshLauncher then ns.RefreshLauncher() end
     if ns.window and ns.window:IsShown() then ns.Refresh() end
@@ -368,7 +379,7 @@ ns.events:RegisterEvent("PLAYER_LEVEL_UP")
 ns.events:RegisterEvent("QUESTLINE_UPDATE")
 ns.events:SetScript("OnEvent", function(_, event, addonName)
     if (event == "ADDON_LOADED" and addonName == "AppearanceGuide_Edit") or event == "PLAYER_LOGIN" then
-        ns.Settings()
+        ns.CharacterSettings()
         if ns.CreateMinimapButton then ns.CreateMinimapButton() end
     end
     if event == "GET_ITEM_INFO_RECEIVED" and ns.RefreshLauncher then ns.RefreshLauncher() end

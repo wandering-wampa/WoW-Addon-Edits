@@ -1,7 +1,7 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.5.0 includes **Tyr's Guard Bulwark** (item 208198), its introductory
+Version 0.5.1 includes **Tyr's Guard Bulwark** (item 208198), its introductory
 quest and Tyr reward chain, plus a live campaign prerequisite inspector.
 ATT and BtWQuests are not required. A complete, verified walkthrough from every
 possible character starting state is still a work in progress.
@@ -22,7 +22,7 @@ Restart WoW after installing this new addon, and enable it in the addon list.
 7. Click **Track this item** to make the displayed item your active target.
    `/ag` and the minimap button open that item directly.
 
-Restart WoW once when upgrading to 0.5.0 so it loads the new launcher file and
+Restart WoW once when upgrading to 0.5.1 so it loads the character-specific
 saved-setting declaration. Existing quest and other addon data are untouched.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
@@ -40,8 +40,9 @@ instruction panel. Long quest names wrap. Drag the frame to reposition it.
 
 ## Active item and minimap button
 
-**Track this item** saves one active item across sessions and characters on the
-same WoW account. Its button reads **Active item** when you are viewing that
+**Track this item** saves a separate active item for each character, across
+sessions. Changing one character's target never changes another's. Its button
+reads **Active item** when you are viewing that
 target. While previewing a different appearance, **Open active item** returns to
 it. Opening other appearances does not change what you track. Quest progress is
 always read from the logged-in character. The initial target is Tyr's Guard
@@ -52,7 +53,12 @@ The minimap button shows the active item's icon, with a cloak fallback while the
 item is loading. Its tooltip names the target. Left-click opens it, even if the
 guide window is already displaying another item. Drag the button around the map
 to reposition it; placement adapts to map size, scale, and supported map shapes.
-The angle is saved along with the active item in `AppearanceGuideEditDB`.
+The minimap angle remains shared in `AppearanceGuideEditDB`. Each character's
+active item is saved separately in `AppearanceGuideEditCharDB` using WoW's
+per-character storage. When upgrading from 0.5.0, the previous shared target is
+imported once for the first character that loads the update, preserving any
+existing character-specific selection. Other characters start with the default
+guide until you choose their targets.
 
 ## Quest progress and navigation
 
@@ -135,8 +141,8 @@ available, the coordinate button is hidden; Show on map still tracks the quest.
   the Sets tab, illusions, and the transmogrifier UI are outside initial scope.
 - Guide notes are English; quest names and active objectives use the client's
   localized text when available.
-- Only the active item and minimap angle are saved in this addon's
-  `AppearanceGuideEditDB`. Quest completion is read from the game, not written or
+- Only the active item (per character) and minimap angle (shared) are saved in
+  this addon's settings. Quest completion is read from the game, not written or
   copied between characters. Existing addons' settings are not modified.
 
 ## Validation
@@ -158,6 +164,8 @@ end-to-end quest completion. In-game acceptance checks:
 - Track an item, preview another, and verify `/ag` and the minimap button return
   to the tracked one. Restart the game and check that the target and button
   position persist. Check the tracking controls do not overlap either reading panel.
+- Set different targets on two characters, switch between them, and verify both
+  `/ag` and the minimap button open each character's own item.
 - Right-click the shield in Uncollected and compare the guide with `/ag`.
 - Change wardrobe pages/slots, then right-click a different appearance.
 - Confirm unknown items clear the previous guide and disable its map button.
