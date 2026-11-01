@@ -35,7 +35,7 @@ The user explicitly requests that all future addon changes made as part of our w
 ## Edited addon names
 
 - Name all edited addons `<OriginalAddonName>_Edit`, including the repository folder, installation folder, primary TOC basename, release ZIP, and addon-list title.
-- Current addon: `addons/ConcentrationTracker_Edit/ConcentrationTracker_Edit.toc`. The existing original-named installed folder is a legacy installation until the user migrates with WoW closed.
+- Concentration Tracker: `addons/ConcentrationTracker_Edit/ConcentrationTracker_Edit.toc`. The installed copy has migrated to the edited name; preserve its existing SavedVariables.
 - Retain SavedVariables global names and original authorship; renaming an addon changes the SavedVariables filename. Document migration and never run original and edited copies together when they share globals.
 
 ## Public repository privacy
@@ -45,3 +45,11 @@ The user explicitly requests that all future addon changes made as part of our w
 
 - Every main push builds all addon ZIPs. Use explicit latest-release publication and skip superseded commits so an older build cannot replace a newer download. Wait for a successful release and verify assets before claiming download links are current.
 - For addon-name migrations, wait for WoW to exit normally, back up the installed addon and account SavedVariables, preserve existing destination data, and verify copies before removing the original from the active AddOns directory.
+
+## Appearance Guide
+
+- `addons/AppearanceGuide_Edit/` is an original standalone addon; the suffix follows this collection's naming convention.
+- Initial coverage is Tyr's Guard Bulwark. Keep unsupported-item coverage explicit and preserve normal wardrobe clicks and native collected-item menus.
+- Quest progress uses the logged-in character's flags. Mark inferred skipped prerequisites as Passed, not Complete. Never substitute account completion for character progress.
+- Prefer live quest-objective waypoints for active quests; do not silently substitute the original quest giver.
+- Run `python tools/test_appearance_guide.py` with `lupa` available after guide logic or UI changes. Live-client visual validation is separate from mocked API checks.

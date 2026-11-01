@@ -1,0 +1,12 @@
+## Interface: 120105
+## Title: AppearanceGuide_Edit
+## Notes: Choose an appearance and follow its quest unlock guide. First guide: Tyr's Guard Bulwark.
+## Author: wandering-wampa
+## Version: 0.1.0
+## OptionalDeps: Blizzard_Collections
+## DefaultState: Enabled
+
+Guides.lua
+Core.lua
+Window.lua
+Wardrobe.lua
