@@ -1,5 +1,7 @@
 # Working instructions
 
+- Ask necessary questions in ordinary chat text. Do not use popup-choice prompts.
+
 ## User preference: sync every addon change to GitHub
 
 The user explicitly requests that all future addon changes made as part of our work be committed and pushed to https://github.com/wandering-wampa/WoW-Addon-Edits.
@@ -53,3 +55,4 @@ The user explicitly requests that all future addon changes made as part of our w
 - Quest progress uses the logged-in character's flags. Mark inferred skipped prerequisites as Passed, not Complete. Never substitute account completion for character progress.
 - Prefer live quest-objective waypoints for active quests; do not silently substitute the original quest giver.
 - Run `python tools/test_appearance_guide.py` with `lupa` available after guide logic or UI changes. Live-client visual validation is separate from mocked API checks.
+- Reading panels must have plain opaque backgrounds without decorative Collections corners. The Current quest button returns to detected progress; it must not imply manual quest completion or advancement.

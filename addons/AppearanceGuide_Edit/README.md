@@ -1,7 +1,7 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.2.0 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
+Version 0.2.1 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
 prerequisites through **Walking the Path of Tyr**. ATT and BtWQuests are not required.
 
 ## Installation and use
@@ -15,8 +15,8 @@ Restart WoW after installing this new addon, and enable it in the addon list.
 4. Read the next quest step and use **Show on map** for its location.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
-The panel uses an opaque Retail portrait frame, Blizzard's Collections backgrounds,
-and native slim scrollbars. The quest list stays above a separately scrolling
+The panel uses a Retail portrait frame, plain opaque reading panels with native
+inset borders, and slim scrollbars. Decorative corners stay out of the text areas. The quest list stays above a separately scrolling
 instruction panel. Long quest names wrap. Drag the frame to reposition it.
 
 ## Commands
@@ -36,13 +36,15 @@ The header shows the current character's confirmed completion count and current
 step. Green check icons mark **Completed** quests. Active quests use a quest
 marker and **Current quest** or **Ready to turn in**. Inferred earlier steps have
 their own label and are not added to the completed count. All prior steps remain
-in the list; opening a guide or selecting **Next step** brings the current step
+in the list; opening a guide or selecting **Current quest** brings the current step
 into view with its preceding steps. If no progress is found, the header says so.
 
-Progress refreshes on quest events and entering the world while the panel is open. **Next step** follows
+Progress refreshes on quest events and entering the world while the panel is open. **Current quest** follows
 the next unfinished step; selecting a row lets you inspect that step until you
-select Next step again. The appearance's collected status is checked separately
-from character quest completion.
+select Current quest again. The appearance's collected status is checked separately
+from character quest completion. The Current quest button is disabled when that
+step is already selected or the reward chain is finished. Select any row to
+preview another step; this never marks quests complete or skips requirements.
 
 For unaccepted quests, map pins show the quest giver. For active quests, the
 guide prefers the game's current objective waypoint, falling back to quest
@@ -80,7 +82,7 @@ the archive root and TOC layout.
 These checks use mocked WoW APIs; they do not establish live-client rendering or
 end-to-end quest completion. In-game acceptance checks:
 
-- Open `/ag`, inspect long quest names, scroll to the final reward, and select Next step.
+- Open `/ag`, inspect long quest names, scroll to the final reward, and select Current quest.
 - Right-click the shield in Uncollected and compare the guide with `/ag`.
 - Change wardrobe pages/slots, then right-click a different appearance.
 - Confirm unknown items clear the previous guide and disable its map button.

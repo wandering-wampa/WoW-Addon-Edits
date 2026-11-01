@@ -54,6 +54,7 @@ function methods:CreateFontString() return make(self) end
 function methods:CreateTexture() return make(self) end
 function CreateFrame(kind,name,parent,template)
  local f=make(parent)
+ f.template=template
  if name then _G[name]=f end
  if template and template:find('PortraitFrameTemplate') then
   f.TitleContainer={TitleText=make(f)}; f.CloseButton=make(f); f.PortraitContainer={portrait=make(f)}
@@ -153,6 +154,9 @@ active={}
 ns.OpenItem(208198)
 assert(ns.window:IsShown() and ns.window.mapButton.enabled)
 assert(ns.window.selectedStep.id==67074)
+assert(ns.window.nextButton.text=='Current quest' and not ns.window.nextButton.enabled)
+assert(ns.window.listInset.template=='InsetFrameTemplate' and ns.window.inset.template=='InsetFrameTemplate')
+assert(ns.window.listInset.readingBackground.color[4]==1 and ns.window.inset.readingBackground.color[4]==1)
 assert(ns.window.listScroll.boundBar and ns.window.scroll.boundBar)
 assert(ns.window.listInset:IsShown() and not ns.window.reference:IsShown())
 ns.window.helpButton.scripts.OnClick()
@@ -160,9 +164,13 @@ assert(ns.window.reference:IsShown())
 local originalRow=ns.window.rows[1]
 ns.window.rows[17].scripts.OnClick()
 assert(ns.window.selectedStep.id==75633 and not ns.window.followNext)
+assert(ns.window.nextButton.enabled)
 assert(not ns.window.reference:IsShown())
 ns.window.nextButton.scripts.OnClick()
 assert(ns.window.selectedStep.id==67074 and ns.window.followNext)
+assert(not ns.window.nextButton.enabled)
+ns.window.rows[1].scripts.OnClick()
+assert(ns.window.followNext) -- clicking the current row must keep automatic progress following
 active[75633]=true; ns.Refresh()
 assert(ns.window.selectedStep.id==75633)
 ns.window.listScroll:SetHeight(184)
@@ -177,6 +185,8 @@ assert(ns.window.listScroll.scroll>0)
 assert(ns.window.rows[17].offset+ns.window.rows[17].height <= ns.window.listScroll.scroll+184)
 complete[75633]=true; active[75633]=nil; ns.Refresh()
 assert(ns.window.selectedStep.id==75634 and ns.window.rows[17].state.text=='Completed')
+complete[76171]=true; ns.Refresh()
+assert(not ns.window.nextButton.enabled and ns.window.currentIndex==nil)
 complete={}; active={}; ns.OpenItem(208198)
 assert(not ns.window.rows[1].icon.texture:find('ReadyCheck%-Ready'))
 assert(ns.window.status.text:find('No progress found',1,true))
@@ -190,6 +200,7 @@ for i,row in ipairs(ns.window.rows) do
 end
 ns.OpenItem(999)
 assert(not ns.window.mapButton.enabled and ns.window.selectedStep==nil)
+assert(not ns.window.nextButton.enabled)
 assert(not ns.window.listInset:IsShown() and not ns.window.helpButton:IsShown())
 for _,row in ipairs(ns.window.rows) do assert(not row:IsShown()) end
 ns.OpenItem(208198)

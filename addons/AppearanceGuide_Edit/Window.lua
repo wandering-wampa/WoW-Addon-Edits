@@ -28,6 +28,16 @@ local function Button(parent, label, width, callback)
     return b
 end
 
+local function ReadingInset(parent)
+    local inset = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+    if inset.Bg then inset.Bg:Hide() end
+    inset.readingBackground = inset:CreateTexture(nil, "BACKGROUND")
+    inset.readingBackground:SetPoint("TOPLEFT", 3, -3)
+    inset.readingBackground:SetPoint("BOTTOMRIGHT", -3, 3)
+    inset.readingBackground:SetColorTexture(.075, .07, .06, 1)
+    return inset
+end
+
 local function CreateWindow()
     local f = CreateFrame("Frame", "AppearanceGuideEditWindow", UIParent, "PortraitFrameTemplate,BackdropTemplate")
     ns.window = f
@@ -64,7 +74,7 @@ local function CreateWindow()
     f.status:SetJustifyH("LEFT")
     f.status:SetHeight(30)
 
-    f.listInset = CreateFrame("Frame", nil, f, "CollectionsBackgroundTemplate")
+    f.listInset = ReadingInset(f)
     f.listInset:ClearAllPoints()
     f.listInset:SetPoint("TOPLEFT", 18, -112)
     f.listInset:SetPoint("TOPRIGHT", -18, -112)
@@ -74,7 +84,7 @@ local function CreateWindow()
     listTitle:SetText("Quest progress")
     f.listScroll, f.listContent = Scroll(f.listInset, 34)
 
-    f.inset = CreateFrame("Frame", nil, f, "CollectionsBackgroundTemplate")
+    f.inset = ReadingInset(f)
     f.inset:ClearAllPoints()
     f.inset:SetPoint("TOPLEFT", 18, -352)
     f.inset:SetPoint("BOTTOMRIGHT", -18, 54)
@@ -85,9 +95,10 @@ local function CreateWindow()
         if f.selectedStep then ns.Navigate(f.selectedStep) end
     end)
     f.mapButton:SetPoint("BOTTOMLEFT", 24, 17)
-    f.nextButton = Button(f, "Next step", 110, function()
+    f.nextButton = Button(f, "Current quest", 110, function()
         f.followNext = true
         f.focusList = true
+        f.showHelp = false
         ns.Refresh()
         f.scroll:SetVerticalScroll(0)
     end)
@@ -136,7 +147,9 @@ local function RefreshList(f, guide, progress)
             row:SetWidth(406)
             row.bg = row:CreateTexture(nil, "BACKGROUND")
             row.bg:SetAllPoints()
-            row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+            row.hover = row:CreateTexture(nil, "HIGHLIGHT")
+            row.hover:SetAllPoints()
+            row.hover:SetColorTexture(.55, .43, .2, .14)
             row.icon = row:CreateTexture(nil, "ARTWORK")
             row.icon:SetPoint("TOPLEFT", 5, -6)
             row.icon:SetSize(18, 18)
@@ -150,7 +163,7 @@ local function RefreshList(f, guide, progress)
         end
         local index = i
         row:SetScript("OnClick", function()
-            f.selectedIndex, f.followNext, f.showHelp = index, false, false
+            f.selectedIndex, f.followNext, f.showHelp = index, index == f.currentIndex, false
             ns.Refresh()
             f.scroll:SetVerticalScroll(0)
         end)
@@ -224,7 +237,7 @@ function ns.Refresh()
         y = y + t:GetStringHeight() + 10
     end
 
-    f.selectedStep = nil
+    f.selectedStep, f.currentIndex = nil, nil
     if not guide then
         f.status:SetText("No quest guide available for this item yet.")
         Text("Guide not available", gold, "GameFontNormalLarge")
@@ -234,6 +247,7 @@ function ns.Refresh()
         RefreshList(f)
     else
         local progress = ns.Progress(guide)
+        f.currentIndex = progress.nextIndex
         local collected = ns.IsCollected(itemID)
         local summary = string.format("%s: %d / %d quests completed", UnitName("player"), progress.completedCount, progress.total)
         if progress.passedCount > 0 then summary = summary .. " - " .. progress.passedCount .. " earlier steps passed" end
@@ -302,7 +316,7 @@ function ns.Refresh()
         y = y + 36
     end
     f.mapButton:SetEnabled(f.selectedStep ~= nil)
-    f.nextButton:SetEnabled(guide ~= nil)
+    f.nextButton:SetEnabled(f.currentIndex ~= nil and f.selectedIndex ~= f.currentIndex)
     f.content:SetHeight(math.max(1, y + 4))
     f.scroll:UpdateScrollChildRect()
     f.scroll:SetVerticalScroll(math.min(f.scroll:GetVerticalScroll(), f.scroll:GetVerticalScrollRange()))
