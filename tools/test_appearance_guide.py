@@ -120,16 +120,16 @@ for name in ('Guides.lua', 'Core.lua', 'Window.lua', 'Wardrobe.lua'):
 
 lua.execute(r'''
 local g=ns.guides[208198]
-assert(#g.steps==19)
+assert(#g.steps==20 and g.steps[1].id==68794)
 assert(ns.Progress(g).nextIndex==1)
 complete[67074]=true
-assert(ns.Progress(g).nextIndex==2 and ns.Progress(g).completedCount==1)
+assert(ns.Progress(g).nextIndex==3 and ns.Progress(g).completedCount==1)
 active[75633]=true
 local p=ns.Progress(g)
-assert(p.nextIndex==17 and p.states[2]=='Passed' and p.states[17]=='In progress')
-assert(p.completedCount==1 and p.passedCount==15 and p.total==19)
+assert(p.nextIndex==18 and p.states[3]=='Passed' and p.states[18]=='In progress')
+assert(p.completedCount==1 and p.passedCount==16 and p.total==20)
 ready[75633]=true
-assert(ns.Progress(g).states[17]=='Ready to turn in')
+assert(ns.Progress(g).states[18]=='Ready to turn in')
 complete[76171]=true
 assert(ns.Progress(g).nextIndex==nil)
 complete={}; active={}; ready={}
@@ -145,7 +145,7 @@ assert(ns.IsCollected(208198))
 assert(not ns.IsCollected(111))
 sources[208198]={}
 
-local step=g.steps[1]
+local step=g.steps[2]
 local m,x,y=ns.Waypoint(step)
 assert(m==2112 and x==step.x)
 ns.Navigate(step); assert(openedMap==2112 and userPin[1]==2112)
@@ -183,7 +183,7 @@ TomTom=nil; active={}; waypoint=nil
 
 ns.OpenItem(208198)
 assert(ns.window:IsShown() and ns.window.mapButton.enabled)
-assert(ns.window.selectedStep.id==67074)
+assert(ns.window.selectedStep.id==68794)
 assert(ns.window.coordinateButton:IsShown() and ns.window.coordinateTarget.map==2112)
 ns.window.coordinateButton.scripts.OnClick(); assert(openedMap==2112)
 assert(ns.window.nextButton.text=='Current quest' and not ns.window.nextButton.enabled)
@@ -194,12 +194,12 @@ assert(ns.window.listInset:IsShown() and not ns.window.reference:IsShown())
 ns.window.helpButton.scripts.OnClick()
 assert(ns.window.reference:IsShown())
 local originalRow=ns.window.rows[1]
-ns.window.rows[17].scripts.OnClick()
+ns.window.rows[18].scripts.OnClick()
 assert(ns.window.selectedStep.id==75633 and not ns.window.followNext)
 assert(ns.window.nextButton.enabled)
 assert(not ns.window.reference:IsShown())
 ns.window.nextButton.scripts.OnClick()
-assert(ns.window.selectedStep.id==67074 and ns.window.followNext)
+assert(ns.window.selectedStep.id==68794 and ns.window.followNext)
 assert(not ns.window.nextButton.enabled)
 ns.window.rows[1].scripts.OnClick()
 assert(ns.window.followNext) -- clicking the current row must keep automatic progress following
@@ -212,20 +212,20 @@ assert(ns.window.coordinateTarget.x==.4 and ns.window.coordinateTarget.y==.6)
 waypoint=nil
 ns.window.listScroll:SetHeight(184)
 complete[67074]=true; ns.window.focusList=true; ns.Refresh()
-assert(ns.window.status.text:find('1 / 19 quests completed',1,true))
-assert(ns.window.rows[1].state.text=='Completed')
-assert(ns.window.rows[1].icon.texture=='Interface\\RaidFrame\\ReadyCheck-Ready')
-assert(ns.window.rows[1].icon:IsShown())
-assert(ns.window.rows[2].state.text=='Earlier step (inferred)' and not ns.window.rows[2].icon:IsShown())
-assert(ns.window.rows[17].state.text=='Current quest')
+assert(ns.window.status.text:find('1 / 20 quests completed',1,true))
+assert(ns.window.rows[2].state.text=='Completed')
+assert(ns.window.rows[2].icon.texture=='Interface\\RaidFrame\\ReadyCheck-Ready')
+assert(ns.window.rows[2].icon:IsShown())
+assert(ns.window.rows[3].state.text=='Earlier step (inferred)' and not ns.window.rows[3].icon:IsShown())
+assert(ns.window.rows[18].state.text=='Current quest')
 assert(ns.window.listScroll.scroll>0)
-assert(ns.window.rows[17].offset+ns.window.rows[17].height <= ns.window.listScroll.scroll+184)
+assert(ns.window.rows[18].offset+ns.window.rows[18].height <= ns.window.listScroll.scroll+184)
 complete[75633]=true; active[75633]=nil; ns.Refresh()
-assert(ns.window.selectedStep.id==75634 and ns.window.rows[17].state.text=='Completed')
+assert(ns.window.selectedStep.id==75634 and ns.window.rows[18].state.text=='Completed')
 complete[76171]=true; ns.Refresh()
 assert(not ns.window.nextButton.enabled and ns.window.currentIndex==nil)
 complete={}; active={}; ns.OpenItem(208198)
-assert(not ns.window.rows[1].icon.texture:find('ReadyCheck%-Ready'))
+assert(not ns.window.rows[1].icon:IsShown())
 assert(ns.window.status.text:find('No progress found',1,true))
 assert(ns.window.rows[1]==originalRow)
 for i,row in ipairs(ns.window.rows) do
@@ -282,4 +282,112 @@ assert(#timers==1); timers[1](); assert(not ns.refreshQueued)
 ns.window:Hide(); timers={}
 ns.events.scripts.OnEvent(ns.events,'QUEST_LOG_UPDATE'); assert(#timers==0)
 ''')
-print('PASS: Lua 5.1 load, quest progress, skips, sources, navigation, window reuse, wardrobe menus, and event refresh')
+lua.execute(r'''
+-- Live prerequisite discovery: blockers, chapter expansion, parallel quests,
+-- unavailable metadata, active objective navigation, and asynchronous row reuse.
+complete={}; active={}; ready={}; waypoint=nil
+local base=ns.guides[208198]
+local offers, lineQuests, failures, chapterLists = {}, {[10]={100,101,102}, [20]={103,104}},
+ {[7]={questID=103,mapID=2025,text='Finish the earlier story.'}}, {[7]={20},[8]={10}}
+local mapRequests=0
+C_QuestLine={
+ RequestQuestLinesForMap=function() mapRequests=mapRequests+1 end,
+ GetAvailableQuestLines=function(map) return offers[map] or {} end,
+ GetQuestLineInfo=function(id)
+  if id>=100 and id<=102 then return {questLineID=10} end
+  if id==103 or id==104 then return {questLineID=20} end
+ end,
+ GetQuestLineQuests=function(id) return lineQuests[id] end,
+}
+C_CampaignInfo={
+ GetCampaignID=function(id) if id==67074 or id==103 or id==104 then return 7 else return 8 end end,
+ GetCampaignInfo=function(id) return {name='Campaign '..id} end,
+ GetFailureReason=function(id) return failures[id] end,
+ GetState=function() return 3 end,
+ GetChapterIDs=function(id) return chapterLists[id] end,
+ GetCampaignChapterInfo=function(id) return {name='Chapter '..id,rewardQuestID=id==10 and 102 or 104} end,
+}
+function UnitLevel() return 80 end
+local function indexOf(route,id)
+ for i,s in ipairs(route.steps) do if s.id==id then return i end end
+ error('Missing quest '..id)
+end
+ns.OpenItem(208198)
+assert(mapRequests==#base.scanMaps)
+assert(ns.window.showPrerequisites and ns.window.selectedStep.id==103)
+assert(ns.window.prerequisiteButton.text=='Back to reward chain')
+assert(not ns.window.coordinateButton:IsShown())
+local route=ns.PrerequisiteGuide(base)
+assert(#route.steps==6 and route.blockerID==103)
+assert(route.steps[indexOf(route,101)].live)
+complete[100]=true; active[102]=true
+local p=ns.Progress(route)
+assert(p.states[indexOf(route,100)]=='Complete')
+assert(p.states[indexOf(route,101)]=='Later') -- parallel tasks not falsely passed
+assert(p.completedCount==1 and p.passedCount==0)
+assert(route.steps[p.nextIndex].id==103) -- explicit blocker wins over other campaign work
+
+-- Offers must match the quest, cannot be hidden, and use the query-map coordinates.
+offers[2025]={{questID=103, x=.3, y=.4,startMapID=999}, {questID=101,x=.1,y=.2,isHidden=true}}
+ns.Refresh()
+assert(ns.window.coordinateTarget.map==2025 and ns.window.coordinateTarget.x==.3)
+assert(ns.window.coordinateTarget.kind=='Quest start (live)')
+assert(ns.AvailableQuest(101,base.scanMaps)==nil)
+ns.window.coordinateButton.scripts.OnClick(); assert(userPin[1]==2025 and userPin[2]==.3)
+active[103]=true; waypoint={2025,.6,.7}; ns.Refresh()
+assert(ns.window.coordinateTarget.kind=='Quest objective' and ns.window.coordinateTarget.x==.6)
+waypoint=nil; ns.Refresh(); assert(not ns.window.coordinateButton:IsShown())
+
+-- Late chapter data must preserve the selected quest and scroll content bounds.
+local idx=indexOf(route,101)
+ns.window.rows[idx].scripts.OnClick()
+assert(ns.window.selectedStep.id==101)
+lineQuests[20]={99,103,104}
+ns.Refresh()
+assert(ns.window.selectedStep.id==101 and ns.window.selectedIndex~=idx)
+complete[103]=true; active[103]=nil; ns.Refresh()
+assert(ns.window.selectedStep.id==101) -- inspecting another step stays put
+ns.window.nextButton.scripts.OnClick()
+assert(ns.window.selectedStep.id==102) -- actual active campaign quest
+
+-- A visible reward-chain quest or actual progress bypasses campaign redirection.
+active={}; complete={}; offers[2112]={{questID=67074,x=.58,y=.34}}
+ns.OpenItem(208198); assert(not ns.window.showPrerequisites)
+offers={}; active[67074]=true
+ns.OpenItem(208198); assert(not ns.window.showPrerequisites and ns.window.selectedStep.id==67074)
+active={}; complete[67074]=true
+ns.OpenItem(208198); assert(not ns.window.showPrerequisites)
+
+-- Cyclic blocker metadata and absent chapter lists terminate without inventing completion.
+complete={}; failures[8]={questID=100,mapID=2025,text='Earlier prerequisite'}
+C_CampaignInfo.GetCampaignID=function(id) return (id==103 or id==100 or id==66221) and 8 or 7 end
+route=ns.PrerequisiteGuide(base)
+assert(route.blockerID==100 and route.steps[ns.Progress(route).nextIndex].id==100)
+complete[100]=true
+assert(ns.PrerequisiteGuide(base).blockerID==103) -- return up the prerequisite chain
+complete={}; failures[8]={questID=104,mapID=2025,text='Other chapter'}
+C_CampaignInfo.GetCampaignID=function(id) return (id==103 or id==66221) and 8 or 7 end
+route=ns.PrerequisiteGuide(base)
+assert(#route.steps==7)
+chapterLists={}; lineQuests={}
+route=ns.PrerequisiteGuide(base)
+assert(route.incompleteData and #route.steps>=1)
+for _,state in ipairs(ns.Progress(route).states) do assert(state~='Complete' and state~='Passed') end
+
+-- Missing APIs still offer the real introduction; historical Renown is not a hard gate.
+C_CampaignInfo=nil; C_QuestLine=nil; ns.offers=nil; ns.offerMaps=nil
+route=ns.PrerequisiteGuide(base)
+assert(route.incompleteData and #route.steps==1 and route.steps[1].id==68794)
+function UnitLevel() return 20 end
+assert(ns.Readiness(base,base.steps[1]):find('Requires level 36',1,true))
+function UnitLevel() return 80 end
+assert(ns.Readiness(base,base.steps[1]):find('not confirmed',1,true))
+ns.OpenItem(208198)
+ns.window.prerequisiteButton.scripts.OnClick()
+assert(ns.window.showPrerequisites)
+ns.window.prerequisiteButton.scripts.OnClick()
+assert(not ns.window.showPrerequisites and ns.window.selectedStep.id==68794)
+ns.OpenItem(999)
+assert(not ns.window.prerequisiteButton:IsShown() and ns.window.coordinateTarget==nil)
+''')
+print('PASS: Lua 5.1, quest progress, live prerequisites, campaign expansion, navigation, UI reuse, wardrobe, and events')

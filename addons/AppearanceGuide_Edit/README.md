@@ -1,8 +1,10 @@
 # AppearanceGuide_Edit
 
 A focused quest guide opened directly from the Retail Appearances collection.
-Version 0.3.0 includes **Tyr's Guard Bulwark** (item 208198), from the early Tyr
-prerequisites through **Walking the Path of Tyr**. ATT and BtWQuests are not required.
+Version 0.4.0 includes **Tyr's Guard Bulwark** (item 208198), its introductory
+quest and Tyr reward chain, plus a live campaign prerequisite inspector.
+ATT and BtWQuests are not required. A complete, verified walkthrough from every
+possible character starting state is still a work in progress.
 
 ## Installation and use
 
@@ -15,6 +17,8 @@ Restart WoW after installing this new addon, and enable it in the addon list.
 4. Read the next quest step and use **Show on map** for its location.
 5. Click the coordinate button in the instructions to set a **TomTom arrow**.
    TomTom is optional; without it, this button uses the built-in map.
+6. Use **Prerequisites** to see campaign requirements and individual campaign
+   quests, with your character's completion and active-quest status.
 
 Normal preview clicks and Blizzard's collected-appearance menu are preserved.
 The panel uses a Retail portrait frame, plain opaque reading panels with native
@@ -55,6 +59,35 @@ location as an active objective. Clicking Show on map changes your tracked map
 destination. No automatic movement, quest acceptance, or turn-in is performed.
 Extra unlock advice and the copyable quest URL are under **Help & reference**.
 
+## Prerequisites
+
+The reward chain now begins with **Ally of Dragons**, offered by Herald Flaps.
+Alexstrasza is that introduction's turn-in NPC. Flaps's pin is labeled as a search
+area because he can move or appear as a messenger. **The Gift of Silver** follows
+the introduction; being unfinished does not establish that it is available.
+
+The addon checks quest completion, accepted quests, level, available quest-start
+pins, and the client's campaign failure reasons. An explicit external quest
+blocker opens the prerequisite view automatically when the reward chain has not
+started and no reward-chain quest is reported available. You can also open that
+view manually at any point and return with **Back to reward chain**.
+
+The prerequisite view expands campaign chapters into the individual quests the
+client supplies. It follows cross-campaign blocker references, detects cycles,
+and retains completed quests. Each quest uses its own character flag: completing
+a parallel quest does not falsely complete or skip another branch. Quest events,
+quest-line updates, and level changes refresh the displayed state. Asynchronous
+metadata updates preserve a manually selected quest even if its row moves.
+
+Available start pins and active objectives can be sent to TomTom. If the game
+does not provide a start location, the addon does not manufacture one. Empty map
+results are treated as unknown availability, not proof that a quest is locked.
+
+The related Dragonflight campaign is available for inspection, but is explicitly
+distinguished from a reported blocker: its whole story is **not** automatically
+declared mandatory for the shield. Historical Renown 12 advice is not enforced
+as a universal current requirement. Missing chapter data is identified in the UI.
+
 The coordinate button sends the exact displayed location to TomTom and explicitly
 targets its arrow, even on repeated clicks. Waypoints are temporary (not saved
 across sessions), and the addon does not remove other waypoints or change TomTom
@@ -64,13 +97,15 @@ available, the coordinate button is hidden; Show on map still tracks the quest.
 
 ## Initial coverage and limitations
 
-- One curated reward, with 19 steps across The Silver Purpose, Tyr's Fall, and
+- One curated reward, with 20 steps including Ally of Dragons, The Silver Purpose, Tyr's Fall, and
   Reforging the Tyr's Guard. Later quests after the shield reward are unnecessary.
 - Other items open a clear **Guide not available** panel with a copyable item URL.
 - This is not a universal quest database. The panel combines curated notes with
   live quest objectives; it does not fetch web walkthroughs in game.
-- The Silver Purpose's campaign/Renown unlock is described as a troubleshooting
-  prerequisite, not enforced as a hard block. Later progress overrides it.
+- WoW's campaign APIs do not expose a complete dependency graph or a walkthrough
+  for every quest. The new inspector reads their live information, but does not
+  yet replace verified authored prerequisite routes for all phasing, reputation,
+  faction, or campaign-skip cases. It must not be advertised as 100% coverage.
 - Quest-giver coordinates are starting points and can be affected by phasing,
   scenarios, or game updates. The quest reference URL is available for each step.
 - The native wardrobe Items tab is supported. Third-party wardrobe replacements,
@@ -84,7 +119,8 @@ available, the coordinate button is hidden; Show on map still tracks the quest.
 
 `python tools/test_appearance_guide.py` (requires `lupa`) loads the actual addon
 files under Lua 5.1 and checks character progress, skipped prerequisites, reward
-completion, source selection, map navigation, recycled UI rows/models, deferred
+completion, live campaign blockers and chapter expansion, cyclic/missing metadata,
+parallel quest flags, available versus hidden quest pins, source selection, map navigation, recycled UI rows/models, deferred
 wardrobe loading, menu preservation, and event-driven refresh. Packaging checks
 the archive root and TOC layout.
 
@@ -96,6 +132,9 @@ end-to-end quest completion. In-game acceptance checks:
 - Change wardrobe pages/slots, then right-click a different appearance.
 - Confirm unknown items clear the previous guide and disable its map button.
 - Accept/advance/turn in a listed quest and check the next-step refresh.
+- Open Prerequisites on a character without the introduction. Compare the
+  reported blocker and completed chapter quests with the native quest log.
+  Accept/finish a prerequisite and check that the display updates without reloading.
 - Confirm the native collected-appearance favorites menu still works.
 - With TomTom enabled, click coordinates twice and check the arrow points to that
   location; change steps and verify the new destination. Without TomTom, verify
@@ -112,10 +151,15 @@ Quest IDs, names, order, and giver coordinates were checked against these source
 
 - [Tyr's Guard Bulwark reward](https://www.wowhead.com/item=208198/tyrs-guard-bulwark)
 - [Walking the Path of Tyr](https://www.wowhead.com/quest=76171/walking-the-path-of-tyr)
+- [Ally of Dragons](https://www.wowhead.com/quest=68794/ally-of-dragons): introduction,
+  giver and reported messenger/search-area behavior. Player reports about newer
+  campaign gating conflict, so they are not encoded as mandatory requirements.
 - [BtWQuests Dragonflight](https://github.com/Breeni/BtWQuestsDragonflight), maintained
   by Breeni: `FriendOfTheDragonIsles.lua`, `10.1.0.lua`, `10.1.7.lua`, and the quest/NPC
   reference tables. Upstream authors retain their rights.
 - [Blizzard wardrobe source mirror](https://github.com/Gethe/wow-ui-source/tree/live/Interface/AddOns/Blizzard_Collections)
+- [Blizzard campaign API definitions](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/WarCampaignDocumentation.lua)
+- [Blizzard quest-line API definitions](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/QuestLineInfoDocumentation.lua)
 
 Future guides should include verified prerequisite order, quest-giver locations,
 clear instructions, and references. Do not imply coverage for unverified items.
