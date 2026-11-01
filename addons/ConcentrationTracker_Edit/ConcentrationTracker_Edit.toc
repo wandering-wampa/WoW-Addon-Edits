@@ -1,5 +1,6 @@
 ## Interface: 120105
 ## Title: ConcentrationTracker_Edit
+## IconTexture: Interface\Icons\INV_Misc_CuriousCoin
 ## Notes: Tracks profession concentration and Artisan's Moxie across characters. |n|cff00ff00/conc|r â€” window, |cff00ff00/conc refresh|r â€” sync, |cff00ff00/conclanguage|r â€” settings.
 ## Author: IceDNicco
 ## Version: 3.9.58

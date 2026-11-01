@@ -1,5 +1,6 @@
 ## Interface: 120105
 ## Title: AppearanceGuide_Edit
+## IconTexture: Interface\Icons\INV_Chest_Cloth_17
 ## Notes: Choose an appearance and follow its quest unlock guide. First guide: Tyr's Guard Bulwark.
 ## Author: wandering-wampa
 ## Version: 0.1.0
