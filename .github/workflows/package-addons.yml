@@ -16,10 +16,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Check Appearance Guide behavior
+      - name: Check addon behavior
         run: |
           python -m pip install lupa==2.8
           python tools/test_appearance_guide.py
+          python tools/test_knowledge_tracker.py
       - run: python tools/package_addons.py --output dist
       - name: Publish manual-install ZIPs
         env:

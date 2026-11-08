@@ -56,3 +56,10 @@ The user explicitly requests that all future addon changes made as part of our w
 - Prefer live quest-objective waypoints for active quests; do not silently substitute the original quest giver.
 - Run `python tools/test_appearance_guide.py` with `lupa` available after guide logic or UI changes. Live-client visual validation is separate from mocked API checks.
 - Reading panels must have plain opaque backgrounds without decorative Collections corners. The Current quest button returns to detected progress; it must not imply manual quest completion or advancement.
+
+## Knowledge Point Tracker
+
+- Source, install folder, TOC and ZIP use `MyusKnowledgePointsTracker_Edit`. Preserve the user's explicitly requested **Knowledge Point Tracker** display name in the window, addon list, Settings and minimap tooltip.
+- Keep the portrait-free Retail border, opaque panels, scrolling source list, separate scrolling details, saved window size and existing tracking integrations.
+- Preserve `MKPT_Config`; migrating from the original folder requires the SavedVariables filename copy described in the addon README, with WoW fully closed.
+- Run `python tools/test_knowledge_tracker.py` with `lupa` available before publishing changes. The headless checks do not replace live-client visual validation.
