@@ -4787,13 +4787,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 194123},
-						[2] = {['chance'] = '±35%', 194124},
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 194123},
-						[2] = {['chance'] = '±35%', 194124},
 					}
 				}
 			},
@@ -4804,13 +4802,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219946, 219947, 219948 },
-						[2] = { ['chance'] = '±35%', 219949, 219950, 219951 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219946, 219947, 219948 },
-						[2] = { ['chance'] = '±35%', 219949, 219950, 219951 },
 					}
 				}
 			},
@@ -4821,13 +4817,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243599, 243600 },
-						[2] = { ['chance'] = '±35%', 243602, 243603 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243599, 243600 },
-						[2] = { ['chance'] = '±35%', 243602, 243603 },
 					}
 				}
 			},
@@ -4977,13 +4971,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 194124},
-						[2] = {['chance'] = '±30%', 200113},
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 194124},
-						[2] = {['chance'] = '±30%', 200113},
 					}
 				}
 			},
@@ -4994,13 +4986,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219949, 219950, 219951 },
-						[2] = { ['chance'] = '±30%', 219952, 219954, 219955 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219949, 219950, 219951 },
-						[2] = { ['chance'] = '±30%', 219952, 219954, 219955 },
 					}
 				}
 			},
@@ -5011,13 +5001,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243602, 243603 },
-						[2] = { ['chance'] = '±30%', 243605, 243606 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243602, 243603 },
-						[2] = { ['chance'] = '±30%', 243605, 243606 },
 					}
 				}
 			},
@@ -5135,13 +5123,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 152877},
-						[2] = {['chance'] = '±35%', 152876},
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 152877},
-						[2] = {['chance'] = '±35%', 152876},
 					}
 				}
 			},
@@ -5167,13 +5153,11 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 200113},
-						[2] = {['chance'] = '±30%', 194124},
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = {['chance'] = '100%', 200113},
-						[2] = {['chance'] = '±30%', 194124},
 					}
 				}
 			},
@@ -5184,30 +5168,26 @@ else
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219952, 219954, 219955 },
-						[2] = { ['chance'] = '±30%', 219949, 219950, 219951 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 219952, 219954, 219955 },
-						[2] = { ['chance'] = '±30%', 219949, 219950, 219951 },
 					}
 				}
 			},
 			
 			-- Midnight results --
 			{
-				['expansion'] = 10,
+				['expansion'] = 11,
 				['weapon'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243605, 243606 },
-						[2] = { ['chance'] = '±30%', 243602, 243603 },
 					},
 				},
 				['armor'] = {
 					['items'] = {
 						[1] = { ['chance'] = '100%', 243605, 243606 },
-						[2] = { ['chance'] = '±30%', 243602, 243603 },
 					}
 				}
 			},
@@ -5484,7 +5464,6 @@ else
 		[172231] = { -- Sacred Shard
 			['text'] = {
 				[1] = {['chance'] = '100%', ['quality'] = 3, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
-				[2] = {['chance'] = '±35%', ['quality'] = 4, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
 			},
 		},
 		[172232] = { -- Eternal Crystal
@@ -5502,13 +5481,11 @@ else
 		[194124] = { -- Vibrant Shard
 			['text'] = {
 				[1] = {['chance'] = '100%', ['quality'] = 3, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
-				[2] = {['chance'] = '±35%', ['quality'] = 2, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
 			},
 		},
 		[200113] = { -- Resonant Crystal
 			['text'] = {
 				[1] = {['chance'] = '100%', ['quality'] = 4, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
-				[2] = {['chance'] = '±30%', ['quality'] = 3, ['type'] = {_G['ARMOR'], _G['WEAPON']}},
 			},
 		},
 		
@@ -5531,37 +5508,31 @@ else
 		[219949] = { -- Gleaming Shard *1
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±35%', ['quality'] = 2, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[219950] = { -- Gleaming Shard *2
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±35%', ['quality'] = 2, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[219951] = { -- Gleaming Shard *3
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±35%', ['quality'] = 2, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[219952] = { -- Refulgent Crystal *1
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 4, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±30%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[219954] = { -- Refulgent Crystal *2
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 4, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±30%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[219955] = { -- Refulgent Crystal *3
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 4, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±30%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		
@@ -5579,25 +5550,21 @@ else
 		[243602] = { -- Radiant Shard *1
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±35%', ['quality'] = 2, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[243603] = { -- Radiant Shard *2
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±35%', ['quality'] = 2, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[243605] = { -- Dawn Crystal *1
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 4, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±30%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 		[243606] = { -- Dawn Crystal *2
 			['text'] = {
 				[1] = { ['chance'] = '100%', ['quality'] = 4, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
-				[2] = { ['chance'] = '±30%', ['quality'] = 3, ['type'] = { _G['ARMOR'], _G['WEAPON'] } },
 			},
 		},
 	};

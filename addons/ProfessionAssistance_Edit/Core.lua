@@ -94,6 +94,9 @@ end
 local function drawFunction(tooltip, expacIcon, dataResults, dataFlavor, blockItemResults, blockLocationResults, showIcons)
 	local showText = dataResults['text'] ~= nil and blockItemResults;
 	local showItem = dataResults['items'] ~= nil and blockItemResults;
+	-- Disenchant results vary with item and profession details. Upstream's
+	-- fixed percentages are not verified, character-specific probabilities.
+	local showChances = dataFlavor.dataLink ~= 'Enchanting' and dataFlavor.dataLink ~= 'Material';
 	
 	local headerText = '\n'..((dataResults['skill'] ~= nil and isClassic) and _G['SKILL_LEVEL']..': |cffffffff'..dataResults['skill']..'|r\n' or '')..expacIcon..dataFlavor['headline'];
 	if(tooltip:GetName() == 'ItemRefTooltip') then
@@ -116,7 +119,11 @@ local function drawFunction(tooltip, expacIcon, dataResults, dataFlavor, blockIt
 		-- Put next line behind isClassic statement
 		if(isClassic) then tooltip:AddLine( _G['STAT_AVERAGE_ITEM_LEVEL']..': |cffffffff'..dataResults['min']..' - '..dataResults['max']..'|r', dataFlavor['color'].r, dataFlavor['color'].g, dataFlavor['color'].b) end
 		for count, textTable in ipairs(dataResults['text']) do
-			tooltip:AddLine((count > 1 and '\n' or '')..textTable['chance'], 1, 1, 1);
+			if showChances then
+				tooltip:AddLine((count > 1 and '\n' or '')..textTable['chance'], 1, 1, 1);
+			elseif count > 1 then
+				tooltip:AddLine(' ');
+			end
 			local typeList = '';
 			
 			for typeCount, typeEntry in ipairs(textTable['type']) do
@@ -129,7 +136,11 @@ local function drawFunction(tooltip, expacIcon, dataResults, dataFlavor, blockIt
 	
 	if(showItem) then
 		for count, itemTable in ipairs(dataResults['items']) do
-			tooltip:AddLine((count > 1 and '\n' or '')..itemTable['chance'], 1, 1, 1);
+			if showChances then
+				tooltip:AddLine((count > 1 and '\n' or '')..itemTable['chance'], 1, 1, 1);
+			elseif count > 1 then
+				tooltip:AddLine(' ');
+			end
 			
 			for _, item in ipairs(itemTable) do
 				local itemLink = select(2, getItemInfoWrapper(item));

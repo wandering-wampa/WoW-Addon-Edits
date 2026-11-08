@@ -173,20 +173,42 @@ SlashCmdList.PA(); ProfessionAssistance_OnAddonCompartmentClick(addonName, "Left
 assert(opened == 2 and SLASH_PA4 == "/ProfessionAssistance_Edit")
 PA_SavedSettings.OreKey = false
 
+-- Audit every Retail expansion/rarity entry, not only Dawn Crystals on blues.
+-- Duplicate expansion IDs previously hid Midnight's epic results entirely.
+for _, quality in ipairs({2, 3, 4}) do
+    local expansions = {}
+    for _, entry in ipairs(table_gear[quality]) do
+        assert(not expansions[entry.expansion], "duplicate disenchant expansion " .. entry.expansion)
+        expansions[entry.expansion] = true
+        for _, slot in ipairs({"armor", "weapon"}) do
+            for _, group in ipairs(entry[slot].items) do
+                assert(group.chance ~= "±30%" and group.chance ~= "±35%", "unverified bonus group remains")
+            end
+        end
+    end
+    for expansion = 0, 11 do assert(expansions[expansion], "missing disenchant expansion " .. expansion) end
+end
+for _, entry in pairs(table_disenchant) do
+    for _, group in ipairs(entry.text) do
+        assert(group.chance ~= "±30%" and group.chance ~= "±35%", "reverse source still advertises bonus")
+    end
+end
+
 -- Reported failure: a rare Midnight helm stopped after its 100% heading when
 -- the first material had a price and the old global coin formatter was absent.
 itemOverrides[270477] = {quality = 3, class = 4, equipLoc = "INVTYPE_HEAD", expansion = 11}
 prices[243602] = 123456; prices[243603] = 234567
 prices[243605] = 345678; prices[243606] = nil
 local midnightHelm = render(270477)
-assert(contains(midnightHelm, "100%") and contains(midnightHelm, "±30%"))
+assert(not contains(midnightHelm, "%"))
 assert(materialRow(midnightHelm, 243602).right == "coins:123456")
 assert(materialRow(midnightHelm, 243603).right == "coins:234567")
-assert(materialRow(midnightHelm, 243605).right == "coins:345678")
-assert(materialRow(midnightHelm, 243606).right == "No price")
+assert(not contains(midnightHelm, "|Hitem:243605:"))
+assert(not contains(midnightHelm, "|Hitem:243606:"))
 
 -- A missing/broken formatter must never hide the material or later groups.
 local currencyAPI = C_CurrencyInfo
+prices[243603] = nil
 for _, brokenFormatter in ipairs({
     {},
     {GetCoinTextureString = function() error("formatter failure") end},
@@ -196,12 +218,50 @@ for _, brokenFormatter in ipairs({
     C_CurrencyInfo = brokenFormatter
     local degraded = render(270477)
     assert(materialRow(degraded, 243602).right == "Price unavailable")
-    assert(materialRow(degraded, 243605).right == "Price unavailable")
-    assert(materialRow(degraded, 243606).right == "No price")
+    assert(materialRow(degraded, 243603).right == "No price")
 end
 C_CurrencyInfo = nil
 assert(materialRow(render(270477), 243602).right == "Price unavailable")
 C_CurrencyInfo = currencyAPI
+prices[243603] = 234567
+
+-- Reviewed primary materials, every quality rank and both armor/weapon paths.
+-- Constants are independently checked item IDs, not read back from the addon.
+local expectedMaterials = {
+    [9] = {[2] = {194123}, [3] = {194124}, [4] = {200113}},
+    [10] = {[2] = {219946, 219947, 219948}, [3] = {219949, 219950, 219951}, [4] = {219952, 219954, 219955}},
+    [11] = {[2] = {243599, 243600}, [3] = {243602, 243603}, [4] = {243605, 243606}},
+}
+for expansion, qualities in pairs(expectedMaterials) do
+    for quality, materialIDs in pairs(qualities) do
+        for _, materialID in ipairs(materialIDs) do prices[materialID] = materialID end
+        for _, class in ipairs({2, 4}) do
+            local gearID = 910000 + expansion * 100 + quality * 10 + class
+            itemOverrides[gearID] = {class = class, quality = quality, expansion = expansion,
+                equipLoc = class == 2 and "INVTYPE_WEAPON" or "INVTYPE_CHEST"}
+            for _, tooltipName in ipairs({"GameTooltip", "ItemRefTooltip"}) do
+                local result = render(gearID, tooltipName); flushTimers()
+                assert(not contains(result, "%"), "disenchant probability still visible")
+                local materialCount = 0
+                for _, row in ipairs(result.lines) do
+                    if row.left:find("|Hitem:", 1, true) then materialCount = materialCount + 1 end
+                end
+                assert(materialCount == #materialIDs, "wrong result count for expansion/quality " .. expansion .. "/" .. quality)
+                for _, materialID in ipairs(materialIDs) do
+                    assert(materialRow(result, materialID).right == "coins:" .. materialID)
+                end
+            end
+        end
+        for _, materialID in ipairs(materialIDs) do
+            local result = render(materialID)
+            assert(not contains(result, "%"), "reverse source probability still visible")
+            assert(contains(result, "Quality" .. quality), "reverse source quality mismatch")
+            for _, otherQuality in ipairs({2, 3, 4}) do
+                if otherQuality ~= quality then assert(not contains(result, "Quality" .. otherQuality)) end
+            end
+        end
+    end
+end
 
 -- Actual milling and prospecting data; prices are per item, not chance-weighted.
 prices[39151] = 123456

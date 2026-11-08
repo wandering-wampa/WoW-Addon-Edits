@@ -7,6 +7,46 @@ Target: **WoW Retail / Midnight 12.1.5** (TOC 120100 / 120105).
 Integration checked against **Auctionator 342** on **November 8, 2026**.
 Prices come from the user's Auctionator database for the active realm/region.
 
+## Disenchant data review in 6.3.1-auctionator.3
+
+Reviewed on **November 8, 2026**, for **Retail / Midnight 12.1.5**. Removed all
+33 Retail disenchant bonus groups labeled **±30%** or **±35%**, including the
+corresponding reverse source entries. This covers more than Dawn Crystals:
+the extra dust/shard/crystal relationships appeared across several expansions.
+The remaining material rows still show Auctionator unit prices.
+
+Disenchant tooltips no longer display fixed percentages, including **100%**.
+They describe material types, not a measured probability, guaranteed quantity,
+or guarantee that every listed quality rank drops together. Milling and
+prospecting probability displays are unchanged.
+
+Fixed a separate upstream data error: the Midnight epic-gear entry used expansion
+ID 10 (The War Within), making its results unreachable for expansion 11 gear.
+
+The reviewed main material families are:
+
+| Expansion | Uncommon gear | Rare gear | Epic gear |
+| --- | --- | --- | --- |
+| Dragonflight | Chromatic Dust (194123) | Vibrant Shard (194124) | Resonant Crystal (200113) |
+| The War Within | Storm Dust (219946–219948) | Gleaming Shard (219949–219951) | Refulgent Crystal (219952, 219954, 219955) |
+| Midnight | Eversinging Dust (243599, 243600) | Radiant Shard (243602, 243603) | Dawn Crystal (243605, 243606) |
+
+All 18 material IDs were checked against Wowhead's item tooltip data. The
+[Midnight specialization guide](https://www.wow-professions.com/midnight/enchanting-specialization-guide-and-builds)
+and [The War Within specialization guide](https://www.wowhead.com/guide/the-war-within/professions/enchanting-specialization)
+support the main quality-based families. A
+[first-hand report of 1,000 rare Midnight disenchants](https://www.wowhead.com/item=239671/courtly-wrists)
+lists Radiant Shards and bonus gathering reagents, with no Dawn Crystals listed.
+That contradicts treating a 30% crystal bonus as universal; it does not establish
+every item's exact loot table or prove crystals impossible in every situation.
+
+This is a simplified reference. Profession skill, specialization bonuses,
+item-specific exceptions, quantities, rank probabilities and older expansion
+loot tables are **not fully verified or modeled**. For example,
+[Dragonflight players reported crystals from crafted blue weapons with the relevant specialization](https://us.forums.blizzard.com/en/wow/t/draconic-disenchantment-question/1430821).
+The removed entries are unsupported blanket claims, not proof that bonus
+outcomes never occur. Reverse source lists have the same coverage limitation.
+
 ## Fix in 6.3.1-auctionator.2
 
 The first build could stop after the disenchanting heading and chance, hiding
@@ -20,8 +60,9 @@ and subsequent rows continue to render.
 Live feedback on November 8, 2026 confirmed the heading-only failure on rare
 Midnight gear in the first build. The regression test now reproduces that
 case with the legacy global absent and checks every material row and price.
-It fails against the first build and passes with this fix. The corrected build
-still requires a live-client visual recheck.
+It fails against the first build and passes with this fix. Subsequent live
+feedback confirmed material and price rows on rare Midnight gear; it also
+identified the unsupported bonus section addressed in auctionator.3.
 
 ## Changes
 
@@ -41,7 +82,8 @@ still requires a live-client visual recheck.
 - If Auctionator is disabled or its pricing API is unavailable, the original
   material display remains available without the price column.
 - Adds **Show Auctionator prices**, enabled by default, to the existing Settings
-  page. Existing drop chances, profession settings and material data are retained.
+  page. Existing profession settings are retained. Disenchant data corrections
+  and coverage limits are described above.
 - Folder, TOC, addon-list title, Settings title, metadata lookups and expansion
   artwork paths use `ProfessionAssistance_Edit`. Deferred chat tooltips check
   that they are still displaying the same request before adding material rows.
@@ -75,7 +117,12 @@ Run `python tools/test_profession_assistance.py` from the repository root with
 `ADDON_LOADED` and tooltip callbacks, and checks Settings entry points, milling,
 prospecting, disenchanting, reverse sources, gathering sources, quality IDs,
 uncached items, dependency/formatter failures, refreshed prices, chat links, closed/reused
-tooltips and existing visibility controls. Release CI runs the suite.
+tooltips and existing visibility controls. It also rejects duplicate/missing
+Retail expansion entries and leftover 30%/35% disenchant groups, then checks the
+reviewed material IDs, prices and reverse sources for all three gear qualities
+in Dragonflight, The War Within and Midnight, using both armor and weapons in
+normal and chat tooltips. The new data checks failed before the correction and
+pass afterward. Release CI runs the suite.
 
 Native reference: Blizzard's
 [GameTooltip.xml](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_GameTooltip/Mainline/GameTooltip.xml),
@@ -85,11 +132,11 @@ and
 The edit retains the native tooltip and adds ordinary `AddDoubleLine` rows;
 it does not create a replacement window or skin.
 
-Automated checks do not establish live appearance. In-game visual validation
-remains pending: check an herb, ore, disenchantable item and chat link at the
+Automated checks do not establish live appearance. The auctionator.3 layout
+still needs an in-game recheck: check a disenchantable item and chat link at the
 chosen UI scale; confirm coin alignment, long material names, missing prices,
-Shift controls and the Settings toggle. Upstream material coverage and drop
-probabilities remain estimates supplied by the original addon.
+Shift controls and the Settings toggle. The rest of the upstream database is
+not a newly certified source of loot probabilities.
 
 ## Upstream attribution
 
