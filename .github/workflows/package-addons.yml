@@ -21,6 +21,7 @@ jobs:
           python -m pip install lupa==2.8
           python tools/test_appearance_guide.py
           python tools/test_knowledge_tracker.py
+          python tools/test_profession_assistance.py
       - run: python tools/package_addons.py --output dist
       - name: Publish manual-install ZIPs
         env:

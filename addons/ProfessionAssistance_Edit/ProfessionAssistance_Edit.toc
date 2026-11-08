@@ -1,0 +1,28 @@
+## Interface: 120100, 120105
+## Title: ProfessionAssistance_Edit
+## Author: Dragonfreaky
+## Notes: Profession Assistance with Auctionator unit prices for tooltip materials.
+## Version: 6.3.1-auctionator.1
+## X-Credits: Misstory
+## SavedVariables: PA_SavedSettings
+## OptionalDeps: Auctionator
+## AddonCompartmentFunc: ProfessionAssistance_OnAddonCompartmentClick
+## IconTexture: Interface\ICONS\INV_Hammer_20
+## Category: Professions
+## Category-deDE: Berufe
+## Category-esES: Profesiones
+## Category-esMX: Profesiones
+## Category-frFR: Métiers
+## Category-itIT: Professioni
+## Category-koKR: 전문 기술
+## Category-ptBR: Profissões
+## Category-ruRU: Профессии
+## Category-zhCN: 专业
+## Category-zhTW: 專業技能
+
+localization.lua
+locationDatabase.lua
+itemDatabase.lua
+interface_Mainline.lua
+Auctionator.lua
+Core.lua
