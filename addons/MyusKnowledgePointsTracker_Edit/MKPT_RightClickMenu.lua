@@ -18,16 +18,16 @@ end
 
 function MKPT_env.BuildFilterMenu(root)
   local filters = {
-    { "hideUniqueTreasures", Utils.UNIQUE_TREASURE_ICON, "Unique Treasures", Utils.UniqueTextColor },
-    { "hideFirstTimeGather", Utils.FIRST_GATHER_ICON, "First Time Gather", Utils.UniqueTextColor },
-    { "hideUniqueBooks", Utils.UNIQUE_BOOK_ICON, "Unique/Renown Books", Utils.UniqueTextColor },
-    { "hideTreatise", Utils.TREATISE_ICON, "Treatise", Utils.WeeklyTextColor },
-    { "hideWeeklyQuests", Utils.WEEKLY_QUEST_ICON, "Weekly Quests", Utils.WeeklyTextColor },
-    { "hideWeeklyTreasures", Utils.WEEKLY_TREASURE_ICON, "Weekly Treasures", Utils.WeeklyTextColor },
-    { "hideCatchUp", Utils.CATCHUP_ICON, "Catch-Up", Utils.CatchUpTextColor },
+    { "hideUniqueTreasures", Utils.UNIQUE_TREASURE_ICON, "Unique Treasures" },
+    { "hideFirstTimeGather", Utils.FIRST_GATHER_ICON, "First Time Gather" },
+    { "hideUniqueBooks", Utils.UNIQUE_BOOK_ICON, "Unique/Renown Books" },
+    { "hideTreatise", Utils.TREATISE_ICON, "Treatise" },
+    { "hideWeeklyQuests", Utils.WEEKLY_QUEST_ICON, "Weekly Quests" },
+    { "hideWeeklyTreasures", Utils.WEEKLY_TREASURE_ICON, "Weekly Treasures" },
+    { "hideCatchUp", Utils.CATCHUP_ICON, "Catch-Up" },
   }
   for _, filter in ipairs(filters) do
-    root:CreateCheckbox(filter[2] .. " " .. filter[4](L[filter[3]]), function(key)
+    root:CreateCheckbox(filter[2] .. " " .. L[filter[3]], function(key)
       return not MKPT_env.db.config[key]
     end, function(key)
       MKPT_env.db.config[key] = not MKPT_env.db.config[key]
@@ -35,7 +35,7 @@ function MKPT_env.BuildFilterMenu(root)
     end, filter[1])
   end
   if MKPT_env.charDb.state.expansion == Enum.ExpansionLevel.Midnight then
-    root:CreateCheckbox(Utils.DUNDUN_ICON .. " " .. Utils.CatchUpTextColor(MKPT_env.MKPT_ShardOfDundun.name),
+    root:CreateCheckbox(Utils.DUNDUN_ICON .. " " .. MKPT_env.MKPT_ShardOfDundun.name,
       function() return not MKPT_env.db.config.hideDundun end,
       function()
         MKPT_env.db.config.hideDundun = not MKPT_env.db.config.hideDundun
@@ -64,6 +64,8 @@ function MKPT_env.ShowRightClickMenu(owner)
         Settings.NotifyUpdate("MKPT_LockWindow")
       end)
     root:CreateCheckbox(L["Auto hide"], function() return MKPT_env.db.ui.autohide end, MKPT_env.ToggleAutoHide)
+    local fit = root:CreateButton(L["Fit height to contents"], MKPT_env.FitUiHeight)
+    fit:SetEnabled(not MKPT_env.db.ui.lockWindow)
     local settings = root:CreateButton(L["Settings"], function()
       if not InCombatLockdown() then Settings.OpenToCategory(MKPT_env.categoryId) end
     end)

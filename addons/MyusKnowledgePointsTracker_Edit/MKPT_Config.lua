@@ -47,6 +47,7 @@ function MKPT_env.InitializeSavedVariables()
         rowBackgroundColor = { r = 0, g = 0, b = 0, a = 0.5 },
         scale = 1.0,
         windowSize = { width = 540, height = 440 },
+        autoHeight = true,
         lockWindow = false,
         hideInCombat = false,
         colors = {

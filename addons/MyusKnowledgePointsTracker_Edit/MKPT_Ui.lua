@@ -5,8 +5,9 @@ local Utils, L = MKPT_env.Utils, MKPT_env.L
 local f = CreateFrame("Frame", "MKPT_Frame", UIParent, "PortraitFrameTemplate,BackdropTemplate")
 MKPT_env.ui = f
 f:Hide()
-local MIN_WIDTH, MIN_HEIGHT = 480, 320
-local HEADER, FOOTER = 80, 36
+local MIN_WIDTH, MIN_HEIGHT = 480, 240
+local HEADER, FOOTER = 72, 36
+local CATEGORY_HEIGHT, SUMMARY_HEIGHT = 25, 20
 local framePool
 
 local function SavePosition()
@@ -18,6 +19,7 @@ end
 
 local function StopMoving()
   if not f.moving and not f.sizing then return end
+  if f.sizing then MKPT_env.db.ui.autoHeight = false end
   f:StopMovingOrSizing()
   f.moving, f.sizing = false, false
   SavePosition()
@@ -39,8 +41,12 @@ local function CreateInset(parent, backgroundAtlas)
   base:SetColorTexture(0.06, 0.06, 0.06, 1)
   if inset.Bg then
     if backgroundAtlas then
-      inset.Bg:SetAtlas(backgroundAtlas, false)
-      inset.Bg:SetVertexColor(1, 1, 1, 1)
+      -- The template's marble is tiled. A recipe-list atlas needs its own
+      -- untiled texture, as in ProfessionsRecipeListTemplate.
+      inset.Bg:Hide()
+      inset.Background = inset:CreateTexture(nil, "BACKGROUND", nil, -5)
+      inset.Background:SetAllPoints()
+      inset.Background:SetAtlas(backgroundAtlas, false)
     else
       inset.Bg:SetVertexColor(0.8, 0.8, 0.8, 1)
     end
@@ -48,21 +54,31 @@ local function CreateInset(parent, backgroundAtlas)
   return inset
 end
 
-local function CreateScroll(parent, inset, name)
-  local scroll = CreateFrame("ScrollFrame", name, parent, "UIPanelScrollFrameTemplate")
+local function CreateScroll(inset, name)
+  local scroll = CreateFrame("ScrollFrame", name, inset)
   scroll:SetFrameLevel(inset:GetFrameLevel() + 2)
-  scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 6, -6)
-  scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -27, 6)
+  scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
+  scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -22, 8)
+  scroll:EnableMouseWheel(true)
+  local bar = CreateFrame("EventFrame", nil, scroll, "MinimalScrollBar")
+  bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+  bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+  scroll.ScrollBar = bar
+  ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
+  scroll:SetPanExtent(42)
   scroll:HookScript("OnScrollRangeChanged", function(self, _, verticalRange)
-    self:SetVerticalScroll(math.min(self:GetVerticalScroll(), math.max(0, verticalRange or 0)))
+    local range = math.max(0, verticalRange or 0)
+    self:SetVerticalScroll(math.min(self:GetVerticalScroll(), range))
+    bar:SetShown(range > 0)
   end)
+  bar:Hide()
   return scroll
 end
 
 function f:UpdateLayout()
   if not self.tree or self.layingOut then return end
   self.layingOut = true
-  local contentWidth = math.max(1, self:GetWidth() - 57)
+  local contentWidth = math.max(1, self:GetWidth() - 54)
   self.tree:SetWidth(contentWidth)
   self.detailText:SetWidth(contentWidth)
   local textHeight = self.detailValue and self.detailText:GetStringHeight() or 0
@@ -74,7 +90,17 @@ function f:UpdateLayout()
   self.listInset:ClearAllPoints()
   self.listInset:SetPoint("TOPLEFT", 12, -HEADER)
   self.listInset:SetPoint("BOTTOMRIGHT", -12, FOOTER + (detailHeight > 0 and detailHeight + 6 or 0))
+  if MKPT_env.db.ui.autoHeight and not self.sizing and self.contentHeight then
+    local maxHeight = math.max(MIN_HEIGHT, math.min(560, UIParent:GetHeight() / self:GetScale() - 24))
+    local height = HEADER + FOOTER + 16 + self.contentHeight + (detailHeight > 0 and detailHeight + 6 or 0)
+    self:SetHeight(math.min(maxHeight, math.max(MIN_HEIGHT, height)))
+  end
   self.layingOut = false
+end
+
+function MKPT_env.FitUiHeight()
+  MKPT_env.db.ui.autoHeight = true
+  f:UpdateLayout()
 end
 
 function f:UpdateDetail(text)
@@ -130,17 +156,17 @@ function MKPT_env.CreateUI()
   end)
 
   f.expansionDropdown = CreateFrame("DropdownButton", nil, f, "WowStyle1DropdownTemplate")
-  f.expansionDropdown:SetPoint("TOPLEFT", 16, -41)
+  f.expansionDropdown:SetPoint("TOPLEFT", 16, -35)
   f.expansionDropdown:SetWidth(180)
   f.expansionDropdown:SetupMenu(MKPT_env.BuildExpansionMenu)
   f.settingsButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
   f.settingsButton:SetSize(90, 24)
-  f.settingsButton:SetPoint("TOPRIGHT", -16, -42)
+  f.settingsButton:SetPoint("TOPRIGHT", -16, -36)
   f.settingsButton:SetText(L["Settings"])
   f.settingsButton:SetScript("OnClick", function()
     if not InCombatLockdown() then Settings.OpenToCategory(MKPT_env.categoryId) end
   end)
-  f.filterButton = CreateFrame("DropdownButton", nil, f, "WowStyle1DropdownTemplate")
+  f.filterButton = CreateFrame("DropdownButton", nil, f, "WowStyle1FilterDropdownTemplate")
   f.filterButton:SetWidth(100)
   f.filterButton:SetPoint("RIGHT", f.settingsButton, "LEFT", -8, 0)
   f.filterButton:SetDefaultText(FILTER or L["Show/Hide"])
@@ -148,14 +174,14 @@ function MKPT_env.CreateUI()
   f.filterButton:OverrideText(FILTER or L["Show/Hide"])
 
   f.listInset = CreateInset(f, "Professions-background-summarylist")
-  f.scrollFrame = CreateScroll(f, f.listInset, "MKPT_ListScrollFrame")
+  f.scrollFrame = CreateScroll(f.listInset, "MKPT_ListScrollFrame")
   f.tree = CreateFrame("Frame", nil, f.scrollFrame)
   f.tree:SetSize(480, 1)
   f.scrollFrame:SetScrollChild(f.tree)
   f.detailInset = CreateInset(f)
   f.detailInset:SetPoint("BOTTOMLEFT", 12, FOOTER)
   f.detailInset:SetPoint("BOTTOMRIGHT", -12, FOOTER)
-  f.detailScroll = CreateScroll(f, f.detailInset, "MKPT_DetailScrollFrame")
+  f.detailScroll = CreateScroll(f.detailInset, "MKPT_DetailScrollFrame")
   f.detailContent = CreateFrame("Frame", nil, f.detailScroll)
   f.detailContent:SetSize(480, 1)
   f.detailScroll:SetScrollChild(f.detailContent)
@@ -233,33 +259,42 @@ end
 local function PrepareRow(b, kind)
   b:SetParent(f.tree)
   b.kind = kind
-  local rowHeight = math.max(24, MKPT_env.db.ui.rowHeight)
+  local rowHeight = math.max(20, MKPT_env.db.ui.rowHeight)
   local professionRow = kind == "profession"
   local categoryRow = professionRow or kind == "trainer"
   for _, texture in ipairs(b.headerTextures) do texture:SetShown(categoryRow) end
   b.highlight:SetShown(kind == "item")
   b.expandHighlight:SetShown(professionRow)
-  b:SetHeight(professionRow and rowHeight + 20 or rowHeight)
+  b:SetHeight(categoryRow and CATEGORY_HEIGHT + (professionRow and SUMMARY_HEIGHT or 0) or rowHeight)
+  b.summaryStatus:SetShown(professionRow)
   b.icon:ClearAllPoints()
-  b.icon:SetPoint("LEFT", 4, 0)
-  b.icon:SetSize(professionRow and 32 or 20, professionRow and 32 or 20)
+  b.icon:SetPoint("LEFT", categoryRow and b.headerArea or b, "LEFT", 4, categoryRow and 2 or 0)
+  b.icon:SetSize(18, 18)
   b.leftText:ClearAllPoints()
   b.middleText:ClearAllPoints()
   b.rightText:ClearAllPoints()
-  for _, text in ipairs({b.leftText, b.middleText, b.rightText}) do
+  for _, text in ipairs({b.leftText, b.middleText, b.rightText, b.summaryStatus}) do
+    text:SetWidth(0)
     text:SetHeight(18)
     text:SetFontHeight(MKPT_env.db.ui.fontSize)
     text:SetWordWrap(false)
     text:SetJustifyV("MIDDLE")
+    text:SetTextColor(1, 1, 1)
   end
   b.leftText:SetJustifyH("LEFT")
   b.rightText:SetJustifyH("RIGHT")
   if professionRow then
-    b.middleText:SetPoint("TOPLEFT", b, "TOPLEFT", 44, -3)
-    b.middleText:SetPoint("TOPRIGHT", b, "TOPRIGHT", -24, -3)
+    b.middleText:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+    b.middleText:SetPoint("RIGHT", b.rightText, "LEFT", -12, 0)
     b.middleText:SetJustifyH("LEFT")
-    b.leftText:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 44, 3)
-    b.rightText:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -8, 3)
+    b.middleText:SetTextColor(1, 0.82, 0)
+    b.rightText:SetPoint("RIGHT", b.headerArea, "RIGHT", -28, 2)
+    b.rightText:SetFontHeight(12)
+    b.rightText:SetTextColor(0.8, 0.8, 0.8)
+    b.leftText:SetPoint("TOPLEFT", b, "TOPLEFT", 8, -CATEGORY_HEIGHT)
+    b.leftText:SetPoint("RIGHT", b.summaryStatus, "LEFT", -12, 0)
+    b.leftText:SetFontHeight(12)
+    b.summaryStatus:SetFontHeight(12)
     b.expand:Show()
   else
     b.leftText:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
@@ -268,6 +303,20 @@ local function PrepareRow(b, kind)
     b.middleText:SetPoint("RIGHT", b.rightText, "LEFT", -6, 0)
     b.middleText:SetJustifyH("LEFT")
     b.expand:Hide()
+    if kind == "trainer" then
+      b.middleText:SetTextColor(1, 0.82, 0)
+      b.rightText:ClearAllPoints()
+      b.rightText:SetPoint("RIGHT", b.headerArea, "RIGHT", -6, 2)
+    end
+    if kind == "item" then
+      -- One leading item icon; source type and points form the right-hand column.
+      b.rightText:SetWidth(44)
+      b.leftText:ClearAllPoints()
+      b.leftText:SetPoint("RIGHT", b.rightText, "LEFT", -10, 0)
+      b.middleText:ClearAllPoints()
+      b.middleText:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+      b.middleText:SetPoint("RIGHT", b.leftText, "LEFT", -8, 0)
+    end
     if kind == "currency" then
       b.leftText:SetPoint("RIGHT", b.rightText, "LEFT", -8, 0)
     end
@@ -293,11 +342,13 @@ framePool = CreateFramePool(
     b.item = nil
     b.currency = nil
     b.kind = nil
+    b.summaryTooltip = nil
     b:Hide()
     b:ClearAllPoints()
     b.leftText:SetText()
     b.middleText:SetText()
     b.rightText:SetText()
+    b.summaryStatus:SetText()
     b.icon:SetTexture()
     b.middleText:SetText()
     b.glow:Hide()
@@ -322,16 +373,18 @@ framePool = CreateFramePool(
     b:SetHeight(buttonHeight)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-    -- Category artwork from ProfessionsRecipeListCategoryTemplate. Retain each
-    -- end cap's atlas width and stretch the middle across the two-line summary.
+    -- Keep Blizzard's 25px category line and the artwork's native height.
+    -- Knowledge totals live below it, on the shared list background.
+    b.headerArea = CreateFrame("Frame", nil, b)
+    b.headerArea:SetPoint("TOPLEFT")
+    b.headerArea:SetPoint("TOPRIGHT")
+    b.headerArea:SetHeight(CATEGORY_HEIGHT)
     b.headerLeft = b:CreateTexture(nil, "BACKGROUND")
     b.headerLeft:SetAtlas("Professions-recipe-header-left", true)
-    b.headerLeft:SetPoint("TOPLEFT")
-    b.headerLeft:SetPoint("BOTTOMLEFT")
+    b.headerLeft:SetPoint("LEFT", b.headerArea, "LEFT", 0, 2)
     b.headerRight = b:CreateTexture(nil, "BACKGROUND")
     b.headerRight:SetAtlas("Professions-recipe-header-right", true)
-    b.headerRight:SetPoint("TOPRIGHT")
-    b.headerRight:SetPoint("BOTTOMRIGHT")
+    b.headerRight:SetPoint("RIGHT", b.headerArea, "RIGHT", 0, 2)
     b.headerMiddle = b:CreateTexture(nil, "BACKGROUND")
     b.headerMiddle:SetAtlas("Professions-recipe-header-middle", false)
     b.headerMiddle:SetPoint("TOPLEFT", b.headerLeft, "TOPRIGHT")
@@ -339,7 +392,7 @@ framePool = CreateFramePool(
     b.headerTextures = { b.headerLeft, b.headerMiddle, b.headerRight }
     b.expand = b:CreateTexture(nil, "OVERLAY")
     b.expand:SetSize(12, 12)
-    b.expand:SetPoint("TOPRIGHT", -6, -6)
+    b.expand:SetPoint("RIGHT", b.headerArea, "RIGHT", -10, 2)
     b.expandHighlight = b:CreateTexture(nil, "HIGHLIGHT")
     b.expandHighlight:SetPoint("CENTER", b.expand, "CENTER")
     b.expandHighlight:SetBlendMode("ADD")
@@ -347,13 +400,16 @@ framePool = CreateFramePool(
       if self.item then
         Tooltip(self, self.item:GetFormattedName() or L["Loading..."], self.item:GetDescription())
       elseif self.profession then
-        Tooltip(self, self.profession.expansionName or self.profession.name,
-          self.kind == "trainer" and L["Click on an item to track"] or L["Click to expand or collapse"])
+        self.middleText:SetTextColor(1, 1, 1)
+        Tooltip(self, self.profession.expansionName or self.profession.name, self.summaryTooltip or L["Click on an item to track"])
       elseif self.currency then
         Tooltip(self, self.currency.name)
       end
     end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnLeave", function(self)
+      if self.profession then self.middleText:SetTextColor(1, 0.82, 0) end
+      GameTooltip:Hide()
+    end)
     if not InCombatLockdown() then
       b:SetPropagateMouseClicks(false)
       b:SetPropagateMouseMotion(false)
@@ -367,14 +423,14 @@ framePool = CreateFramePool(
     b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     b.icon:SetAlpha(1)
 
-    b.leftText = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.leftText = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight_NoShadow")
     b.leftText:SetHeight(buttonHeight)
     b.leftText:SetPoint("LEFT", b.icon, "RIGHT", 4, 0)
     b.leftText:SetJustifyH("LEFT")
     b.leftText:SetJustifyV("MIDDLE")
     b.leftText:SetFontHeight(fontSize)
 
-    b.middleText = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.middleText = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight_NoShadow")
     b.middleText:SetPoint("LEFT", b.leftText, "RIGHT")
     b.middleText:SetHeight(buttonHeight)
     b.middleText:SetJustifyH("LEFT")
@@ -382,13 +438,17 @@ framePool = CreateFramePool(
     b.middleText:SetFontHeight(fontSize)
     b.middleText:SetTextColor(1, 1, 1)
 
-    b.rightText = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.rightText = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight_NoShadow")
     b.middleText:SetPoint("RIGHT", b.rightText, "LEFT")
     b.rightText:SetHeight(buttonHeight)
     b.rightText:SetPoint("RIGHT", -4, 0)
     b.rightText:SetJustifyH("RIGHT")
     b.rightText:SetJustifyV("MIDDLE")
     b.rightText:SetFontHeight(fontSize)
+
+    b.summaryStatus = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight_NoShadow")
+    b.summaryStatus:SetPoint("TOPRIGHT", -8, -CATEGORY_HEIGHT)
+    b.summaryStatus:SetJustifyH("RIGHT")
 
     b.highlight = b:CreateTexture(nil, "HIGHLIGHT")
     b.highlight:SetAtlas("Professions_Recipe_Hover", false)
@@ -414,35 +474,30 @@ local function AddProfessionButton(profession)
   b.profession = profession
 
 
-  local remaining = profession:CalculateRemainingKps()
-  b.leftText:SetText(Utils.WeeklyTextColor(L["W:"] .. remaining.weekly) ..
-    Utils.CatchUpTextColor(" " .. remaining.catchUp))
-
-  local missing, unspent, isTreeFilled = profession:CalculateTreeKps()
-  local unique = Utils.UniqueTextColor(L["U:"] .. remaining.unique)
-  local rightText
-
-  if isTreeFilled then
-    rightText = Utils.FILLED_TREE_ICON
-  elseif unspent > 0 then
-    rightText = Utils.UnspentKpsTextColor(unspent)
-  else
-    rightText = Utils.MissingTextColor(missing)
+  local function Metric(label, value)
+    return WrapTextInColorCode(L[label] .. ":", "ffffd100") .. " " .. tostring(value)
   end
-  b.rightText:SetText(unique .. " " .. rightText)
+  local remaining = profession:CalculateRemainingKps()
+  local missing, unspent, isTreeFilled = profession:CalculateTreeKps()
+  b.leftText:SetText(Metric("Weekly", remaining.weekly) .. "   " .. Metric("Catch-Up", remaining.catchUp) ..
+    "   " .. Metric("Unique", remaining.unique))
+  b.summaryStatus:SetText(isTreeFilled and Utils.FILLED_TREE_ICON or
+    (unspent > 0 and Metric("Unspent", unspent) or Metric("Missing", missing)))
+  b.summaryTooltip = Metric("Weekly", remaining.weekly) .. "\n" .. Metric("Catch-Up", remaining.catchUp) ..
+    "\n" .. Metric("Unique", remaining.unique) .. "\n" .. Metric("Unspent", unspent) ..
+    "\n" .. Metric("Missing", missing) .. "\n\n" .. L["Click to expand or collapse"]
   local collapseAtlas = profession.expanded and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
   b.expand:SetAtlas(collapseAtlas, true)
   b.expandHighlight:SetAtlas(collapseAtlas, true)
 
-  local middleText = profession.name
   local skillLevel = profession:GetSkillLevel()
   if skillLevel then
-    middleText = middleText .. " " .. skillLevel.skillLevel .. "/" ..
-        skillLevel.maxSkillLevel .. " +" .. skillLevel.bonusSkill
+    b.rightText:SetText(skillLevel.skillLevel .. "/" .. skillLevel.maxSkillLevel ..
+      (skillLevel.bonusSkill > 0 and " +" .. skillLevel.bonusSkill or ""))
   end
 
   b.icon:SetTexture(profession.icon)
-  b.middleText:SetText(middleText)
+  b.middleText:SetText(profession.name)
   b.middleText:SetJustifyH("LEFT")
 
   b:SetScript("OnClick", function(self, button)
@@ -473,13 +528,6 @@ local function AddProfessionTrainerButton(profession)
   b.leftText:SetText(CreateAtlasMarkup("Crosshair_trainer_32"), 16, 16)
 
   b.rightText:SetText(CreateAtlasMarkup("Waypoint-MapPin-Untracked"), 16, 16)
-
-  local middleText = profession.name
-  local skillLevel = profession:GetSkillLevel()
-  if skillLevel then
-    middleText = middleText .. " " .. skillLevel.skillLevel .. "/" ..
-        skillLevel.maxSkillLevel .. " +" .. skillLevel.bonusSkill
-  end
 
   b.icon:SetTexture(profession.icon)
   b.middleText:SetText(profession.expansionTrainerName)
@@ -522,12 +570,12 @@ local function AddItemButton(item)
   b.leftText:SetText(item:GetCategoryIcon())
   b.leftText:SetJustifyV("MIDDLE")
 
-  local name = item:GetFormattedName()
+  local name = item:GetName()
   if not name then
     -- Listen to ITEM_DATA_LOAD_RESULT event if the name isn't ready and updates the frame
     b:SetScript("OnEvent", function(self, event, ...)
       if event ~= "ITEM_DATA_LOAD_RESULT" or not self.item then return end
-      local name = self.item:GetFormattedName()
+      local name = self.item:GetName()
       if name then
         self.middleText:SetText(name)
         self:UnregisterEvent("ITEM_DATA_LOAD_RESULT")
@@ -539,6 +587,10 @@ local function AddItemButton(item)
   b.middleText:SetText(name or L["Loading..."])
   b.middleText:SetJustifyH("LEFT")
   b.rightText:SetText("+" .. item:GetRemainingKnowledgePoints())
+  if not item:MeetRequirements() then
+    b.middleText:SetTextColor(0.5, 0.5, 0.5)
+    b.rightText:SetTextColor(0.5, 0.5, 0.5)
+  end
 
   b:SetScript("OnClick", function(self, button)
     if button == "RightButton" then MKPT_env.ShowRightClickMenu(f); return end
@@ -589,7 +641,7 @@ local function AddCurrencyButton(currency, currency2)
   return b
 end
 
--- Refresh rows without changing the user's window size or scroll position.
+-- Preserve scroll position and manually chosen dimensions when refreshing rows.
 function f:RenderTree()
   if not self.tree then return end
   local trackedItem = MKPT_env.MKPT_Item.GetTrackedItem()
@@ -625,7 +677,8 @@ function f:RenderTree()
   end
   local dundun = MKPT_env.MKPT_ShardOfDundun
   if dundun:Show() then PlaceRow(AddCurrencyButton(dundun, MKPT_env.MKPT_UnalloyedAbundance)) end
-  self.tree:SetHeight(math.max(1, contentHeight))
+  self.contentHeight = math.max(1, contentHeight)
+  self.tree:SetHeight(self.contentHeight)
   if professionCount == 0 then self:UpdateDetail(L["No professions found"])
   elseif #professionsToShow == 0 then self:UpdateDetail(Utils.FILLED_TREE_ICON .. " " .. L["Professions are complete!"])
   elseif trackedItem then self:UpdateDetail(trackedItem:GetDescription())

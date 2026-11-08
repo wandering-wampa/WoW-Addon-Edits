@@ -1,7 +1,7 @@
 # Knowledge Point Tracker — native Retail UI
 
 Personal customization of **Myu's Knowledge Points Tracker 0.9.0**, dated
-**November 8, 2026**. Custom version: **0.9.0-native.5**. Targets **WoW Retail /
+**November 8, 2026**. Custom version: **0.9.0-native.6**. Targets **WoW Retail /
 Midnight**, interface **120100 / 120105**, with the upstream Dragonflight, The War
 Within, and Midnight profession data. No region or realm restrictions were added.
 
@@ -10,16 +10,21 @@ Within, and Midnight profession data. No region or realm restrictions were added
 - Retail frame with a centered "Knowledge Point Tracker" title and no portrait circle.
 - Matching display name in the AddOns list, Blizzard Settings and minimap tooltip.
 - Opaque rock-textured outer panel and framed list/detail areas.
-- Profession sections retain permanent native category-header artwork. Item rows
-  share the profession-list background without individual black strips; hover
-  and tracked-source highlights are mutually exclusive.
+- Profession sections use native-height, single-line gold category headers, with
+  skill values aligned to the right and labeled knowledge totals beneath the artwork.
+- White source names and points, dimmed when requirements are unmet; one leading
+  item icon, with source-type icons aligned beside the point values.
+- Items share an untiled profession-list background without individual black
+  strips. Native hover and tracked-source highlights are mutually exclusive.
 - Visible native expansion selector, source filters, Settings button and close button.
-- Profession headers with skill level, knowledge totals and expand/collapse markers;
-  professions stay in alphabetical order and sources retain upstream ordering.
-- Responsive rows, a scrolling profession/source list and separately scrolling
+- Native expand/collapse markers; professions stay in alphabetical order and
+  sources retain upstream ordering.
+- Responsive rows and slim Retail scrollbars for the source list and separate
   tracking details. Full source names and requirements are available on hover.
-- Title-bar dragging, a bottom-right resize grip, saved window dimensions and
-  existing lock/scale preferences. Locking prevents both dragging and resizing.
+- Automatic height fits shorter lists and caps long lists at a scrollable height.
+  Manual resizing switches to saved fixed dimensions; the context menu can restore
+  automatic height. Title-bar dragging and existing lock/scale preferences remain.
+  Locking prevents both dragging and manual resizing.
 - Escape and Close save the closed state. Combat/instance/delve hides preserve
   the user's preference and restore the window when appropriate.
 - Native autohide checkbox; open menus keep the frame visible. Minimap hovering
@@ -28,8 +33,9 @@ Within, and Midnight profession data. No region or realm restrictions were added
 
 Existing knowledge calculations, profession data, requirements, waypoint/TomTom
 tracking and SavedVariables remain intact. Background opacity no longer changes
-the solid panel. Knowledge colors remain configurable in Blizzard Settings; the
-old panel/row opacity values are retained in saved data but are no longer applied.
+the solid panel. Configurable knowledge colors remain in tooltips and descriptions;
+the main list uses native gold/white/disabled text. The old panel/row opacity values
+are retained in saved data but are no longer applied.
 
 ## Use
 
@@ -37,6 +43,10 @@ old panel/row opacity values are retained in saved data but are no longer applie
 - Click a profession to expand it, then a source to track it. Click again to untrack.
 - Use the top dropdowns for expansions and filters. Right-click the frame or a row
   for the combined menu, including Lock Window and Auto hide.
+- Height fits the displayed contents by default, including on the first load of
+  this revision. Drag the bottom-right grip to save a fixed size, or right-click
+  and choose **Fit height to contents** to restore automatic sizing. Width and
+  position remain saved. Expand/collapse and tracking refreshes respect a fixed size.
 - `/mkpt config`: open the existing Blizzard settings integration.
 - `/mkpt scale 1.0`: adjust scale (0.5–1.5).
 - `/mkpt lock`, `/mkpt unlock`, `/mkpt autohide`, `/mkpt minimap`, and
@@ -74,7 +84,7 @@ updates before replacing this customized copy.
 ## Validation
 
 All 27 Lua files compile under Lua 5.1. `python tools/test_knowledge_tracker.py`
-(requires `lupa`) runs a headless harness covering 49 UI
+(requires `lupa`) runs a headless harness covering 63 UI
 behavior assertions, including expanded lists, row reuse, tracking, menus, scale,
 resize persistence, autohide and visibility transitions, and validates the TOC's
 load paths and addon icon. The release workflow runs these checks before packaging.
@@ -84,10 +94,13 @@ check layout, scrolling and tracking in WoW after reloading.
 ## Visual reference
 
 The list follows Blizzard's [Professions recipe-list templates](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRecipeList.xml),
-reviewed November 8, 2026: three-piece category headers, shared list artwork and
-separate recipe interaction overlays. The two-line profession summaries adapt
-that header artwork to this tracker's existing layout. Selection behavior follows
+reviewed November 8, 2026: 25-pixel category lines, native-size header end caps,
+gold category labels, white recipe labels, shared untiled list artwork and
+separate recipe interaction overlays. Knowledge totals sit below the category
+artwork rather than stretching it vertically. Selection behavior follows
 the [recipe-list mixin](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRecipeList.lua).
+Both scroll panes use [MinimalScrollBar](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_SharedXML/Shared/Scroll/MinimalScrollBar.xml)
+and Blizzard's [ScrollFrame adapter](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_SharedXML/Shared/Scroll/ScrollUtil.lua).
 
 ## Upstream
 

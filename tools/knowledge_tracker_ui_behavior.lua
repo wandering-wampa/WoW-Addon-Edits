@@ -55,6 +55,7 @@ function Frame:IsShown() return self.shown end
 function Frame:SetText(text) self.textValue = text and tostring(text) or "" end
 function Frame:GetText() return self.textValue end
 function Frame:SetFontHeight(size) self.fontSize = size end
+function Frame:SetTextColor(...) self.textColor = {...} end
 function Frame:GetStringHeight()
   return math.ceil(math.max(1, #(self.textValue or "")) / math.max(1, self.width / 7)) * (self.fontSize or 13)
 end
@@ -70,6 +71,9 @@ function Frame:SetNormalTexture(texture) self.normalTexture = texture end
 function Frame:SetScrollChild(child) self.scrollChild = child end
 function Frame:SetVerticalScroll(value) self.verticalScroll = value end
 function Frame:GetVerticalScroll() return self.verticalScroll or 0 end
+function Frame:GetVerticalScrollRange()
+  return self.testRange or math.max(0, (self.scrollChild and self.scrollChild:GetHeight() or 0) - self:GetHeight())
+end
 function Frame:SetResizeBounds(...) self.resizeBounds = {...} end
 function Frame:SetMovable(value) self.movable = value end
 function Frame:SetResizable(value) self.resizable = value end
@@ -85,12 +89,30 @@ function Frame:IsMenuOpen() return self.menuOpen or false end
 function Frame:CloseMenu() self.menuOpen = false end
 function Frame:SetDefaultText(text) self.defaultText = text end
 function Frame:OverrideText(text) self.overrideText = text end
-for _, method in ipairs({"SetFrameStrata", "SetToplevel", "SetClampedToScreen", "EnableMouse", "SetBackdrop",
-  "SetJustifyH", "SetJustifyV", "SetWordWrap", "RegisterForDrag", "RegisterForClicks", "SetTextColor",
+for _, method in ipairs({"SetFrameStrata", "SetToplevel", "SetClampedToScreen", "EnableMouse", "EnableMouseWheel", "SetBackdrop",
+  "SetJustifyH", "SetJustifyV", "SetWordWrap", "RegisterForDrag", "RegisterForClicks",
   "SetTexCoord", "SetColorTexture", "SetHighlightTexture", "SetPushedTexture", "SetPropagateMouseClicks", "SetBlendMode",
   "SetPropagateMouseMotion", "SetOwner", "AddLine"}) do
   Frame[method] = function() end
 end
+-- Model the native adapter's contract: wheel/arrow/thumb inputs drive the
+-- ScrollFrame, and range changes update the thumb without losing the clamp hook.
+ScrollUtil = {InitScrollFrameWithScrollBar=function(scroll, bar)
+  function scroll:SetPanExtent(value) self.panExtent = value end
+  function bar:SetScrollPercentage(value)
+    self.percentage = math.max(0, math.min(1, value))
+    scroll:SetVerticalScroll(self.percentage * scroll:GetVerticalScrollRange())
+  end
+  function bar:ScrollStepInDirection(direction)
+    local range = scroll:GetVerticalScrollRange()
+    if range > 0 then self:SetScrollPercentage((scroll:GetVerticalScroll() + direction * scroll.panExtent) / range) end
+  end
+  scroll:SetScript("OnMouseWheel", function(_, value) bar:ScrollStepInDirection(-value) end)
+  scroll:SetScript("OnScrollRangeChanged", function(self, _, range)
+    self.nativeScrollRange = range
+    bar.visibleExtent = self:GetHeight() / (range + self:GetHeight())
+  end)
+end}
 function CreateFrame(kind, name, parent, template)
   local f = newFrame(parent)
   f.template, f.name = template, name
@@ -234,6 +256,8 @@ local function item(p, name)
   local i = {name=name, available=true}
   function i:Show() return p.expanded and self.available end
   function i:GetFormattedName() return self.name end
+  function i:GetName() return self.name end
+  function i:MeetRequirements() return not self.locked end
   function i:GetIcon() return 1 end
   function i:GetCategoryIcon() return "[W]" end
   function i:GetRemainingKnowledgePoints() return 2 end
@@ -263,6 +287,10 @@ check(ui:IsShown() and env.charDb.state.show, "New install opens")
 check(ui.detailValue == "No professions found", "Empty state")
 check(ui.backdropColor[4] == 1 and UISpecialFrames[1] == "MKPT_Frame", "Opaque panel and Escape registration")
 check(env.CreateUI() == ui and #UISpecialFrames == 1, "Initialization is idempotent")
+check(ui.listInset.Background.atlas == "Professions-background-summarylist" and not ui.listInset.Bg:IsShown(),
+  "Recipe background does not inherit the tiled marble texture")
+check(ui.scrollFrame.ScrollBar.template == "MinimalScrollBar" and ui.detailScroll.ScrollBar.template == "MinimalScrollBar",
+  "Both panes use Retail slim scrollbars")
 local a, z = profession(2, "Alchemy", true), profession(1, "Tailoring", true)
 professions = {[1]=z, [2]=a}
 local pending = item(a, nil)
@@ -272,8 +300,17 @@ check(#pools[1].active == 2 and pools[1].active[1].profession == a, "Collapsed r
 check(findRow("profession", a).parent == ui.tree, "Rows are owned by scroll child")
 check(findRow("profession", a).headerLeft:IsShown() and not findRow("profession", a).highlight:IsShown(),
   "Profession categories retain their header treatment without a recipe hover strip")
+local header = findRow("profession", a)
+check(header.headerArea:GetHeight() == 25 and #header.headerLeft.points == 1 and #header.headerRight.points == 1,
+  "Category end caps keep native height instead of stretching across the summary")
+check(header.middleText:GetText() == "Alchemy" and header.rightText:GetText() == "100/100 +6" and
+  header.leftText:GetText():find("Weekly:", 1, true) and header.summaryStatus:GetText():find("Unspent:", 1, true),
+  "Profession, skill and labeled knowledge totals occupy separate fields")
+check(header.middleText.textColor[2] == 0.82 and ui:GetHeight() == 240,
+  "Collapsed list uses gold headings and a compact window")
 click(findRow("profession", a))
 check(a.expanded and #pools[1].active == 63 and ui.tree:GetHeight() > ui:GetHeight(), "Expanded list can scroll")
+check(ui:GetHeight() == 560, "Automatic height is bounded for long lists")
 local row = findRow("item", pending)
 check(not row.headerLeft:IsShown() and row.highlight:IsShown(), "Source entries remain distinct from category headers")
 check(row.middleText:GetText() == "Loading..." and row.events.ITEM_DATA_LOAD_RESULT, "Uncached item placeholder")
@@ -282,12 +319,33 @@ check(row.events.ITEM_DATA_LOAD_RESULT, "Unrelated event ignored")
 pending.name = "Loaded item"
 row.scripts.OnEvent(row, "ITEM_DATA_LOAD_RESULT")
 check(row.middleText:GetText() == pending.name and not row.events.ITEM_DATA_LOAD_RESULT, "Item load refresh")
+pending.GetFormattedName = function() return "|cffff0000Colored tooltip|r" end
+pending.locked = true
+ui:RenderTree()
+check(findRow("item", pending).middleText:GetText() == pending.name and findRow("item", pending).middleText.textColor[1] == 0.5,
+  "Locked source uses a plain dimmed label; formatted tooltip remains independent")
+pending.locked = false
+ui:RenderTree()
+check(findRow("item", pending).middleText.textColor[1] == 1 and findRow("item", pending).rightText.textColor[1] == 1,
+  "Recycled available entries restore white labels and counts")
 ui.scrollFrame:SetVerticalScroll(100)
 ui:RenderTree()
 check(ui.scrollFrame:GetVerticalScroll() == 100, "Refresh preserves scroll position")
+ui.scrollFrame:SetHeight(280) -- explicit viewport, since this mock has no anchor solver
+ui.scrollFrame.testRange = 10
 ui.scrollFrame.scripts.OnScrollRangeChanged(ui.scrollFrame, 0, 10)
 check(ui.scrollFrame:GetVerticalScroll() == 10 and ui.scrollFrame.nativeScrollRange == 10,
-  "Shrinking list clamps scroll and preserves the template's scrollbar update")
+  "Shrinking list clamps scroll and preserves the native adapter's thumb update")
+ui.scrollFrame.testRange = 400
+ui.scrollFrame.scripts.OnScrollRangeChanged(ui.scrollFrame, 0, 400)
+ui.scrollFrame.ScrollBar:SetScrollPercentage(0.5)
+check(ui.scrollFrame:GetVerticalScroll() == 200 and ui.scrollFrame.ScrollBar:IsShown(), "Slim scrollbar thumb controls list position")
+ui.scrollFrame.scripts.OnMouseWheel(ui.scrollFrame, -1)
+check(ui.scrollFrame:GetVerticalScroll() == 242, "Mouse wheel uses the native scrollbar adapter")
+ui.scrollFrame.testRange = 0
+ui.scrollFrame.scripts.OnScrollRangeChanged(ui.scrollFrame, 0, 0)
+check(ui.scrollFrame:GetVerticalScroll() == 0 and not ui.scrollFrame.ScrollBar:IsShown(), "Short list hides scrollbar and resets scroll")
+ui.scrollFrame.testRange = nil
 click(findRow("item", pending))
 check(env.trackedItem == pending and ui.detailInset:GetHeight() == 120, "Tracking opens bounded details")
 check(findRow("item", pending).glow:IsShown() and not findRow("item", pending).highlight:IsShown(),
@@ -295,7 +353,7 @@ check(findRow("item", pending).glow:IsShown() and not findRow("item", pending).h
 check(ui.detailContent:GetHeight() > ui.detailInset:GetHeight(), "Long details remain scrollable")
 local oldHeight = ui:GetHeight()
 ui:SetWidth(720)
-check(ui.tree:GetWidth() == 663 and ui.detailText:GetWidth() == 663 and ui:GetHeight() == oldHeight,
+check(ui.tree:GetWidth() == 666 and ui.detailText:GetWidth() == 666 and ui:GetHeight() == oldHeight,
   "Resize updates list and wrapped description without changing height")
 click(findRow("item", pending), "RightButton")
 check(env.trackedItem == pending and env.IsShowingRightClickMenu(), "Right click opens menu without changing track")
@@ -314,6 +372,8 @@ for _, pooled in ipairs(pools[1].active) do
 end
 check(findRow("profession", a).headerLeft:IsShown() and not findRow("profession", a).glow:IsShown(),
   "Recycled source rows restore category decoration without stale selection")
+check(findRow("profession", a).middleText.textColor[2] == 0.82 and ui:GetHeight() == 240,
+  "Collapsing restores gold categories and removes unused window height")
 local trainer = profession(3, "Enchanting", false)
 professions = {trainer}
 ui:RenderTree()
@@ -349,6 +409,10 @@ ui.resizeButton.scripts.OnMouseDown(nil, "LeftButton")
 ui:SetSize(680, 500)
 ui.resizeButton.scripts.OnMouseUp()
 check(env.db.ui.windowSize.width == 680 and env.db.ui.windowSize.height == 500, "Resize persists dimensions")
+ui:RenderTree()
+check(not env.db.ui.autoHeight and ui:GetHeight() == 500, "Manual resize disables automatic height across refreshes")
+env.FitUiHeight()
+check(env.db.ui.autoHeight and ui:GetHeight() < 500, "Fit action restores automatic height")
 env.SetUiScale("bad input")
 check(env.db.ui.scale == 1, "Invalid scale is safe")
 env.SetUiScale(2)
