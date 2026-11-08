@@ -33,7 +33,7 @@ function MKPT_env.InitializeOptionsMenu()
     do
         local name = L["Appearance"]
         local buttonText = L["Go to appearance options"]
-        local tooltip = L["Change text color, row shading and window scale"]
+        local tooltip = L["Change text colors and window scale"]
         local onClick = function() Settings.OpenToCategory(appearanceSubategory:GetID()) end
         local searchable = false
         local generalCategoryButtonInitializer = CreateSettingsButtonInitializer(
@@ -228,39 +228,6 @@ function MKPT_env.InitializeOptionsMenu()
         end
         local SetValue = function(value)
             MKPT_env.SetUiScale(value)
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            appearanceSubategory,
-            variableName,
-            type(defaultValue),
-            name,
-            defaultValue,
-            GetValue,
-            SetValue
-        )
-        local options = Settings.CreateSliderOptions(minValue, maxValue, step)
-        options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
-            return string.format("%.2f", value)
-        end)
-        Settings.CreateSlider(appearanceSubategory, setting, options, tooltip)
-    end
-
-    do
-        local variableName = "MKPT_RowBackgroundOpacity"
-        local name = L["Row Background Opacity"]
-        local tooltip = L["Changes row background opacity"]
-        local defaultValue = 0.5
-        local minValue = 0.0
-        local maxValue = 1.0
-        local step = 0.01
-
-        local GetValue = function()
-            return db.ui.rowBackgroundColor.a
-        end
-        local SetValue = function(value)
-            db.ui.rowBackgroundColor.a = value
-            MKPT_env.ui:RenderTree()
         end
 
         local setting = Settings.RegisterProxySetting(

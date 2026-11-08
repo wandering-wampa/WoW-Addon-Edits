@@ -1,7 +1,7 @@
 # Knowledge Point Tracker — native Retail UI
 
 Personal customization of **Myu's Knowledge Points Tracker 0.9.0**, dated
-**November 8, 2026**. Custom version: **0.9.0-native.3**. Targets **WoW Retail /
+**November 8, 2026**. Custom version: **0.9.0-native.4**. Targets **WoW Retail /
 Midnight**, interface **120100 / 120105**, with the upstream Dragonflight, The War
 Within, and Midnight profession data. No region or realm restrictions were added.
 
@@ -10,6 +10,8 @@ Within, and Midnight profession data. No region or realm restrictions were added
 - Retail frame with a centered "Knowledge Point Tracker" title and no portrait circle.
 - Matching display name in the AddOns list, Blizzard Settings and minimap tooltip.
 - Opaque rock-textured outer panel and framed list/detail areas.
+- Rows sit directly on the inset panel, with no permanent colored profession
+  blocks or item strips. Native highlights appear on hover and tracked sources.
 - Visible native expansion selector, source filters, Settings button and close button.
 - Profession headers with skill level, knowledge totals and expand/collapse markers;
   professions stay in alphabetical order and sources retain upstream ordering.
@@ -25,8 +27,8 @@ Within, and Midnight profession data. No region or realm restrictions were added
 
 Existing knowledge calculations, profession data, requirements, waypoint/TomTom
 tracking and SavedVariables remain intact. Background opacity no longer changes
-the solid panel; row shading and knowledge colors remain configurable in Blizzard
-Settings. The older opacity value is retained in saved data.
+the solid panel. Knowledge colors remain configurable in Blizzard Settings; the
+old panel/row opacity values are retained in saved data but are no longer applied.
 
 ## Use
 

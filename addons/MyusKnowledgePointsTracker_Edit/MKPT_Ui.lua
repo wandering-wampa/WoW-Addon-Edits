@@ -250,7 +250,6 @@ local function PrepareRow(b, kind)
     b.leftText:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 44, 3)
     b.rightText:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -8, 3)
     b.expand:Show()
-    b.background:SetVertexColor(0.24, 0.20, 0.12, 0.85)
   else
     b.leftText:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
     b.rightText:SetPoint("RIGHT", -6, 0)
@@ -299,7 +298,6 @@ framePool = CreateFramePool(
   function(b)
     local buttonHeight = MKPT_env.db.ui.rowHeight
     local fontSize = MKPT_env.db.ui.fontSize
-    local backgroundColor = MKPT_env.db.ui.rowBackgroundColor
 
     b:SetHeight(buttonHeight)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -322,10 +320,6 @@ framePool = CreateFramePool(
       b:SetPropagateMouseMotion(false)
     end
 
-    b.background = b:CreateTexture(nil, "BACKGROUND")
-    b.background:SetAllPoints()
-    b.background:SetTexture("Interface/BUTTONS/WHITE8X8")
-    b.background:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
 
     b.icon = b:CreateTexture(nil, "OVERLAY")
     b.icon:SetPoint("LEFT")
@@ -380,8 +374,6 @@ local function AddProfessionButton(profession)
   PrepareRow(b, "profession")
   b.profession = profession
 
-  local backgroundColor = MKPT_env.db.ui.rowBackgroundColor
-  b.background:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
 
   local remaining = profession:CalculateRemainingKps()
   b.leftText:SetText(Utils.WeeklyTextColor(L["W:"] .. remaining.weekly) ..
@@ -400,7 +392,6 @@ local function AddProfessionButton(profession)
   end
   b.rightText:SetText(unique .. " " .. rightText)
   b.expand:SetTexture(profession.expanded and "Interface\\Buttons\\UI-MinusButton-UP" or "Interface\\Buttons\\UI-PlusButton-UP")
-  b.background:SetVertexColor(0.24, 0.20, 0.12, 0.85)
 
   local middleText = profession.name
   local skillLevel = profession:GetSkillLevel()
@@ -437,8 +428,6 @@ local function AddProfessionTrainerButton(profession)
   PrepareRow(b, "trainer")
   b.profession = profession
 
-  local backgroundColor = MKPT_env.db.ui.rowBackgroundColor
-  b.background:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
 
   b.leftText:SetText(CreateAtlasMarkup("Crosshair_trainer_32"), 16, 16)
 
@@ -489,8 +478,6 @@ local function AddItemButton(item)
   local b = framePool:Acquire()
   PrepareRow(b, "item")
 
-  local backgroundColor = MKPT_env.db.ui.rowBackgroundColor
-  b.background:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
 
   b.item = item
   if item:IsHighlighted() then
@@ -545,8 +532,6 @@ local function AddCurrencyButton(currency, currency2)
   PrepareRow(b, "currency")
   b.currency = currency
 
-  local backgroundColor = MKPT_env.db.ui.rowBackgroundColor
-  b.background:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
 
   local quantities = currency:GetQuantity()
   local weeklyText = " +" .. math.max(0, quantities.maxWeeklyEarned - quantities.weeklyEarned)

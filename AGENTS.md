@@ -61,5 +61,6 @@ The user explicitly requests that all future addon changes made as part of our w
 
 - Source, install folder, TOC and ZIP use `MyusKnowledgePointsTracker_Edit`. Preserve the user's explicitly requested **Knowledge Point Tracker** display name in the window, addon list, Settings and minimap tooltip.
 - Keep the portrait-free Retail border, opaque panels, scrolling source list, separate scrolling details, saved window size and existing tracking integrations.
+- Keep permanent row backgrounds absent; use the native inset surface with hover and tracking highlights only.
 - Preserve `MKPT_Config`; migrating from the original folder requires the SavedVariables filename copy described in the addon README, with WoW fully closed.
 - Run `python tools/test_knowledge_tracker.py` with `lupa` available before publishing changes. The headless checks do not replace live-client visual validation.
