@@ -23,7 +23,10 @@ for i = 0, 7 do
 end
 function GetLocale() return "enUS" end
 function IsShiftKeyDown() return shiftDown or false end
-function GetCoinTextureString(price) return "coins:" .. price end
+-- Current Retail exposes this only through C_CurrencyInfo. Do not invent the
+-- removed global: doing so hid a real failure before the first material row.
+GetCoinTextureString = nil
+C_CurrencyInfo = {GetCoinTextureString = function(price) return "coins:" .. price end}
 function itemID(item)
     if type(item) == "number" then return item end
     return type(item) == "string" and tonumber(item:match("item:(%d+)")) or nil
@@ -169,6 +172,36 @@ assert(settings.AuctionatorPrices.default and PA_SavedSettings.AuctionatorPrices
 SlashCmdList.PA(); ProfessionAssistance_OnAddonCompartmentClick(addonName, "LeftButton")
 assert(opened == 2 and SLASH_PA4 == "/ProfessionAssistance_Edit")
 PA_SavedSettings.OreKey = false
+
+-- Reported failure: a rare Midnight helm stopped after its 100% heading when
+-- the first material had a price and the old global coin formatter was absent.
+itemOverrides[270477] = {quality = 3, class = 4, equipLoc = "INVTYPE_HEAD", expansion = 11}
+prices[243602] = 123456; prices[243603] = 234567
+prices[243605] = 345678; prices[243606] = nil
+local midnightHelm = render(270477)
+assert(contains(midnightHelm, "100%") and contains(midnightHelm, "±30%"))
+assert(materialRow(midnightHelm, 243602).right == "coins:123456")
+assert(materialRow(midnightHelm, 243603).right == "coins:234567")
+assert(materialRow(midnightHelm, 243605).right == "coins:345678")
+assert(materialRow(midnightHelm, 243606).right == "No price")
+
+-- A missing/broken formatter must never hide the material or later groups.
+local currencyAPI = C_CurrencyInfo
+for _, brokenFormatter in ipairs({
+    {},
+    {GetCoinTextureString = function() error("formatter failure") end},
+    {GetCoinTextureString = function() return nil end},
+    {GetCoinTextureString = function() return "" end},
+}) do
+    C_CurrencyInfo = brokenFormatter
+    local degraded = render(270477)
+    assert(materialRow(degraded, 243602).right == "Price unavailable")
+    assert(materialRow(degraded, 243605).right == "Price unavailable")
+    assert(materialRow(degraded, 243606).right == "No price")
+end
+C_CurrencyInfo = nil
+assert(materialRow(render(270477), 243602).right == "Price unavailable")
+C_CurrencyInfo = currencyAPI
 
 -- Actual milling and prospecting data; prices are per item, not chance-weighted.
 prices[39151] = 123456

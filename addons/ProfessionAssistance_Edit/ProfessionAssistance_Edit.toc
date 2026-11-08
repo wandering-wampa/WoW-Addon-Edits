@@ -2,7 +2,7 @@
 ## Title: ProfessionAssistance_Edit
 ## Author: Dragonfreaky
 ## Notes: Profession Assistance with Auctionator unit prices for tooltip materials.
-## Version: 6.3.1-auctionator.1
+## Version: 6.3.1-auctionator.2
 ## X-Credits: Misstory
 ## SavedVariables: PA_SavedSettings
 ## OptionalDeps: Auctionator

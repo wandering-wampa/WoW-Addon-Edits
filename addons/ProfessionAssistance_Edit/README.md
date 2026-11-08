@@ -7,6 +7,22 @@ Target: **WoW Retail / Midnight 12.1.5** (TOC 120100 / 120105).
 Integration checked against **Auctionator 342** on **November 8, 2026**.
 Prices come from the user's Auctionator database for the active realm/region.
 
+## Fix in 6.3.1-auctionator.2
+
+The first build could stop after the disenchanting heading and chance, hiding
+all material rows when the first material had a recorded price. Its call to
+the removed global `GetCoinTextureString` failed on current Retail. The edit
+now uses `C_CurrencyInfo.GetCoinTextureString`, as documented in Blizzard's
+[CurrencyInfo API](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/CurrencyInfoDocumentation.lua).
+If price formatting fails, the material remains visible with **Price unavailable**
+and subsequent rows continue to render.
+
+Live feedback on November 8, 2026 confirmed the heading-only failure on rare
+Midnight gear in the first build. The regression test now reproduces that
+case with the legacy global absent and checks every material row and price.
+It fails against the first build and passes with this fix. The corrected build
+still requires a live-client visual recheck.
+
 ## Changes
 
 - Milling, prospecting and disenchanting material rows show a right-aligned
@@ -58,7 +74,7 @@ Run `python tools/test_profession_assistance.py` from the repository root with
 `lupa==2.8` installed. The suite loads the real TOC in Lua 5.1, fires the actual
 `ADDON_LOADED` and tooltip callbacks, and checks Settings entry points, milling,
 prospecting, disenchanting, reverse sources, gathering sources, quality IDs,
-uncached items, dependency failures, refreshed prices, chat links, closed/reused
+uncached items, dependency/formatter failures, refreshed prices, chat links, closed/reused
 tooltips and existing visibility controls. Release CI runs the suite.
 
 Native reference: Blizzard's

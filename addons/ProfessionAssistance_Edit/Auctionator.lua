@@ -29,7 +29,15 @@ function addon.AddMaterialLine(tooltip, item, text)
 	-- database on each tooltip build so a later Auctionator scan replaces misses.
 	local ok, price = pcall(getPrice, addonName, itemID);
 	if ok and type(price) == 'number' and price > 0 and price < math.huge then
-		tooltip:AddDoubleLine(text, GetCoinTextureString(math.floor(price)), 1, 1, 1, 1, 1, 1);
+		-- Retail moved the coin formatter to C_CurrencyInfo. Keep the material
+		-- visible even if formatting fails, instead of aborting the whole tooltip.
+		local formatMoney = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString;
+		local formatted, moneyText = pcall(formatMoney, math.floor(price));
+		if formatted and type(moneyText) == 'string' and moneyText ~= '' then
+			tooltip:AddDoubleLine(text, moneyText, 1, 1, 1, 1, 1, 1);
+		else
+			tooltip:AddDoubleLine(text, 'Price unavailable', 1, 1, 1, 0.55, 0.55, 0.55);
+		end
 	else
 		tooltip:AddDoubleLine(text, 'No price', 1, 1, 1, 0.55, 0.55, 0.55);
 	end
