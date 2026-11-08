@@ -31,13 +31,20 @@ local function Tooltip(owner, title, text)
   GameTooltip:Show()
 end
 
-local function CreateInset(parent)
+local function CreateInset(parent, backgroundAtlas)
   local inset = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
   inset:SetFrameLevel(parent:GetFrameLevel() + 1)
   local base = inset:CreateTexture(nil, "BACKGROUND", nil, -8)
   base:SetAllPoints()
   base:SetColorTexture(0.06, 0.06, 0.06, 1)
-  if inset.Bg then inset.Bg:SetVertexColor(0.8, 0.8, 0.8, 1) end
+  if inset.Bg then
+    if backgroundAtlas then
+      inset.Bg:SetAtlas(backgroundAtlas, false)
+      inset.Bg:SetVertexColor(1, 1, 1, 1)
+    else
+      inset.Bg:SetVertexColor(0.8, 0.8, 0.8, 1)
+    end
+  end
   return inset
 end
 
@@ -140,7 +147,7 @@ function MKPT_env.CreateUI()
   f.filterButton:SetupMenu(function(_, root) MKPT_env.BuildFilterMenu(root) end)
   f.filterButton:OverrideText(FILTER or L["Show/Hide"])
 
-  f.listInset = CreateInset(f)
+  f.listInset = CreateInset(f, "Professions-background-summarylist")
   f.scrollFrame = CreateScroll(f, f.listInset, "MKPT_ListScrollFrame")
   f.tree = CreateFrame("Frame", nil, f.scrollFrame)
   f.tree:SetSize(480, 1)
@@ -228,6 +235,10 @@ local function PrepareRow(b, kind)
   b.kind = kind
   local rowHeight = math.max(24, MKPT_env.db.ui.rowHeight)
   local professionRow = kind == "profession"
+  local categoryRow = professionRow or kind == "trainer"
+  for _, texture in ipairs(b.headerTextures) do texture:SetShown(categoryRow) end
+  b.highlight:SetShown(kind == "item")
+  b.expandHighlight:SetShown(professionRow)
   b:SetHeight(professionRow and rowHeight + 20 or rowHeight)
   b.icon:ClearAllPoints()
   b.icon:SetPoint("LEFT", 4, 0)
@@ -267,6 +278,12 @@ local function PrepareRow(b, kind)
   b.glow:SetAllPoints()
 end
 
+local function SetRowSelected(row, selected)
+  row.glow:SetShown(selected)
+  -- Match Blizzard's recipe list: selection replaces the hover overlay.
+  row.highlight:SetShown(not selected and row.kind == "item")
+end
+
 framePool = CreateFramePool(
   "Button",
   f,
@@ -284,7 +301,10 @@ framePool = CreateFramePool(
     b.icon:SetTexture()
     b.middleText:SetText()
     b.glow:Hide()
-    b.highlight:SetAlpha(0.7)
+    b.highlight:Hide()
+    b.highlight:SetAlpha(0.5)
+    for _, texture in ipairs(b.headerTextures) do texture:Hide() end
+    b.expandHighlight:Hide()
     if not InCombatLockdown() then
       b:SetPropagateMouseClicks(false)
       b:SetPropagateMouseMotion(false)
@@ -301,9 +321,28 @@ framePool = CreateFramePool(
 
     b:SetHeight(buttonHeight)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+    -- Category artwork from ProfessionsRecipeListCategoryTemplate. Retain each
+    -- end cap's atlas width and stretch the middle across the two-line summary.
+    b.headerLeft = b:CreateTexture(nil, "BACKGROUND")
+    b.headerLeft:SetAtlas("Professions-recipe-header-left", true)
+    b.headerLeft:SetPoint("TOPLEFT")
+    b.headerLeft:SetPoint("BOTTOMLEFT")
+    b.headerRight = b:CreateTexture(nil, "BACKGROUND")
+    b.headerRight:SetAtlas("Professions-recipe-header-right", true)
+    b.headerRight:SetPoint("TOPRIGHT")
+    b.headerRight:SetPoint("BOTTOMRIGHT")
+    b.headerMiddle = b:CreateTexture(nil, "BACKGROUND")
+    b.headerMiddle:SetAtlas("Professions-recipe-header-middle", false)
+    b.headerMiddle:SetPoint("TOPLEFT", b.headerLeft, "TOPRIGHT")
+    b.headerMiddle:SetPoint("BOTTOMRIGHT", b.headerRight, "BOTTOMLEFT")
+    b.headerTextures = { b.headerLeft, b.headerMiddle, b.headerRight }
     b.expand = b:CreateTexture(nil, "OVERLAY")
     b.expand:SetSize(12, 12)
     b.expand:SetPoint("TOPRIGHT", -6, -6)
+    b.expandHighlight = b:CreateTexture(nil, "HIGHLIGHT")
+    b.expandHighlight:SetPoint("CENTER", b.expand, "CENTER")
+    b.expandHighlight:SetBlendMode("ADD")
     b:SetScript("OnEnter", function(self)
       if self.item then
         Tooltip(self, self.item:GetFormattedName() or L["Loading..."], self.item:GetDescription())
@@ -355,13 +394,13 @@ framePool = CreateFramePool(
     b.highlight:SetAtlas("Professions_Recipe_Hover", false)
     b.highlight:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", buttonHeight, 0)
     b.highlight:SetPoint("BOTTOMRIGHT")
-    b.highlight:SetAlpha(0.7)
+    b.highlight:SetAlpha(0.5)
 
     b.glow = b:CreateTexture(nil, "OVERLAY")
     b.glow:SetAtlas("Professions_Recipe_Active", false)
     b.glow:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", buttonHeight, 0)
     b.glow:SetPoint("BOTTOMRIGHT")
-    b.glow:SetAlpha(0.7)
+    b.glow:SetAlpha(1)
     b.glow:Hide()
   end
 )
@@ -391,7 +430,9 @@ local function AddProfessionButton(profession)
     rightText = Utils.MissingTextColor(missing)
   end
   b.rightText:SetText(unique .. " " .. rightText)
-  b.expand:SetTexture(profession.expanded and "Interface\\Buttons\\UI-MinusButton-UP" or "Interface\\Buttons\\UI-PlusButton-UP")
+  local collapseAtlas = profession.expanded and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
+  b.expand:SetAtlas(collapseAtlas, true)
+  b.expandHighlight:SetAtlas(collapseAtlas, true)
 
   local middleText = profession.name
   local skillLevel = profession:GetSkillLevel()
@@ -444,11 +485,7 @@ local function AddProfessionTrainerButton(profession)
   b.middleText:SetText(profession.expansionTrainerName)
   b.middleText:SetJustifyH("LEFT")
 
-  if profession:IsHighlighted() then
-    b.glow:Show()
-  else
-    b.glow:Hide()
-  end
+  SetRowSelected(b, profession:IsHighlighted())
 
   b:SetScript("OnClick", function(self, button)
     if button == "RightButton" then MKPT_env.ShowRightClickMenu(f); return end
@@ -480,11 +517,7 @@ local function AddItemButton(item)
 
 
   b.item = item
-  if item:IsHighlighted() then
-    b.glow:Show()
-  else
-    b.glow:Hide()
-  end
+  SetRowSelected(b, item:IsHighlighted())
   b.icon:SetTexture(item:GetIcon())
   b.leftText:SetText(item:GetCategoryIcon())
   b.leftText:SetJustifyV("MIDDLE")

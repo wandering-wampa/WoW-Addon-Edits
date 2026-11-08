@@ -87,7 +87,7 @@ function Frame:SetDefaultText(text) self.defaultText = text end
 function Frame:OverrideText(text) self.overrideText = text end
 for _, method in ipairs({"SetFrameStrata", "SetToplevel", "SetClampedToScreen", "EnableMouse", "SetBackdrop",
   "SetJustifyH", "SetJustifyV", "SetWordWrap", "RegisterForDrag", "RegisterForClicks", "SetTextColor",
-  "SetTexCoord", "SetColorTexture", "SetHighlightTexture", "SetPushedTexture", "SetPropagateMouseClicks",
+  "SetTexCoord", "SetColorTexture", "SetHighlightTexture", "SetPushedTexture", "SetPropagateMouseClicks", "SetBlendMode",
   "SetPropagateMouseMotion", "SetOwner", "AddLine"}) do
   Frame[method] = function() end
 end
@@ -270,9 +270,12 @@ for n=1,60 do item(a, "Knowledge source "..n) end
 ui:RenderTree()
 check(#pools[1].active == 2 and pools[1].active[1].profession == a, "Collapsed rows sorted by name")
 check(findRow("profession", a).parent == ui.tree, "Rows are owned by scroll child")
+check(findRow("profession", a).headerLeft:IsShown() and not findRow("profession", a).highlight:IsShown(),
+  "Profession categories retain their header treatment without a recipe hover strip")
 click(findRow("profession", a))
 check(a.expanded and #pools[1].active == 63 and ui.tree:GetHeight() > ui:GetHeight(), "Expanded list can scroll")
 local row = findRow("item", pending)
+check(not row.headerLeft:IsShown() and row.highlight:IsShown(), "Source entries remain distinct from category headers")
 check(row.middleText:GetText() == "Loading..." and row.events.ITEM_DATA_LOAD_RESULT, "Uncached item placeholder")
 row.scripts.OnEvent(row, "UNRELATED_EVENT")
 check(row.events.ITEM_DATA_LOAD_RESULT, "Unrelated event ignored")
@@ -287,6 +290,8 @@ check(ui.scrollFrame:GetVerticalScroll() == 10 and ui.scrollFrame.nativeScrollRa
   "Shrinking list clamps scroll and preserves the template's scrollbar update")
 click(findRow("item", pending))
 check(env.trackedItem == pending and ui.detailInset:GetHeight() == 120, "Tracking opens bounded details")
+check(findRow("item", pending).glow:IsShown() and not findRow("item", pending).highlight:IsShown(),
+  "Tracked source replaces the hover overlay rather than stacking both")
 check(ui.detailContent:GetHeight() > ui.detailInset:GetHeight(), "Long details remain scrollable")
 local oldHeight = ui:GetHeight()
 ui:SetWidth(720)
@@ -307,6 +312,8 @@ ui:RenderTree()
 for _, pooled in ipairs(pools[1].active) do
   check(pooled.currency == nil and not pooled.events.ITEM_DATA_LOAD_RESULT, "Recycled rows clear old data/events")
 end
+check(findRow("profession", a).headerLeft:IsShown() and not findRow("profession", a).glow:IsShown(),
+  "Recycled source rows restore category decoration without stale selection")
 local trainer = profession(3, "Enchanting", false)
 professions = {trainer}
 ui:RenderTree()

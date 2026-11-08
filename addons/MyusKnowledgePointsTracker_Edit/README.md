@@ -1,7 +1,7 @@
 # Knowledge Point Tracker — native Retail UI
 
 Personal customization of **Myu's Knowledge Points Tracker 0.9.0**, dated
-**November 8, 2026**. Custom version: **0.9.0-native.4**. Targets **WoW Retail /
+**November 8, 2026**. Custom version: **0.9.0-native.5**. Targets **WoW Retail /
 Midnight**, interface **120100 / 120105**, with the upstream Dragonflight, The War
 Within, and Midnight profession data. No region or realm restrictions were added.
 
@@ -10,8 +10,9 @@ Within, and Midnight profession data. No region or realm restrictions were added
 - Retail frame with a centered "Knowledge Point Tracker" title and no portrait circle.
 - Matching display name in the AddOns list, Blizzard Settings and minimap tooltip.
 - Opaque rock-textured outer panel and framed list/detail areas.
-- Rows sit directly on the inset panel, with no permanent colored profession
-  blocks or item strips. Native highlights appear on hover and tracked sources.
+- Profession sections retain permanent native category-header artwork. Item rows
+  share the profession-list background without individual black strips; hover
+  and tracked-source highlights are mutually exclusive.
 - Visible native expansion selector, source filters, Settings button and close button.
 - Profession headers with skill level, knowledge totals and expand/collapse markers;
   professions stay in alphabetical order and sources retain upstream ordering.
@@ -73,12 +74,20 @@ updates before replacing this customized copy.
 ## Validation
 
 All 27 Lua files compile under Lua 5.1. `python tools/test_knowledge_tracker.py`
-(requires `lupa`) runs a headless harness covering 45 UI
+(requires `lupa`) runs a headless harness covering 49 UI
 behavior assertions, including expanded lists, row reuse, tracking, menus, scale,
 resize persistence, autohide and visibility transitions, and validates the TOC's
 load paths and addon icon. The release workflow runs these checks before packaging.
 This is not a live-client visual test:
 check layout, scrolling and tracking in WoW after reloading.
+
+## Visual reference
+
+The list follows Blizzard's [Professions recipe-list templates](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRecipeList.xml),
+reviewed November 8, 2026: three-piece category headers, shared list artwork and
+separate recipe interaction overlays. The two-line profession summaries adapt
+that header artwork to this tracker's existing layout. Selection behavior follows
+the [recipe-list mixin](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRecipeList.lua).
 
 ## Upstream
 
