@@ -2,6 +2,13 @@
 
 - Ask necessary questions in ordinary chat text. Do not use popup-choice prompts.
 
+## Start every addon UI edit here
+
+- Read the [project brief](docs/project-brief.md) and [Retail UI style guide](docs/retail-ui-style.md) before choosing artwork, colors, spacing or controls. These record the accepted design and failures from November 8, 2026; apply them to future addons, not only Knowledge Point Tracker.
+- Research the closest native Blizzard screen's current XML and Lua before implementing a visual treatment. Match its hierarchy and component proportions, not just its texture names. Preserve each addon's established functional differences.
+- Keep native category decoration distinct from plain child entries. Do not stretch a single-line header across a multi-line summary, paint permanent dark strips behind every item, or color every source name by category.
+- Verify the actual template's mixins and methods. Test initialization and the real entry-point callbacks as well as row refresh; mocks must reject unsupported template APIs. Automated checks alone do not establish visual correctness.
+
 ## User preference: sync every addon change to GitHub
 
 The user explicitly requests that all future addon changes made as part of our work be committed and pushed to https://github.com/wandering-wampa/WoW-Addon-Edits.
@@ -60,6 +67,7 @@ The user explicitly requests that all future addon changes made as part of our w
 ## Knowledge Point Tracker
 
 - Source, install folder, TOC and ZIP use `MyusKnowledgePointsTracker_Edit`. Preserve the user's explicitly requested **Knowledge Point Tracker** display name in the window, addon list, Settings and minimap tooltip.
+- The GitHub README catalog label is **KnowledgePointsTracker_Edit**, without the Myus prefix, as requested. Keep upstream authorship credited in its documentation.
 - Keep the portrait-free Retail border, opaque panels, scrolling source list, separate scrolling details, saved window size and existing tracking integrations.
 - Preserve the distinction between profession categories and item entries: profession/trainer headers keep native category artwork; individual items must not have permanent black strips. Follow Blizzard's Professions recipe-list templates and keep hover/selection overlays mutually exclusive. Do not remove header backgrounds when changing item-row styling.
 - Keep category artwork at its native height, with knowledge summaries below it. Use gold category labels, white source labels and dimmed unmet requirements; retain category colors in tooltips/details. Use untiled recipe-list artwork and slim Retail scrollbars. Automatic height must yield to a saved manual resize.
