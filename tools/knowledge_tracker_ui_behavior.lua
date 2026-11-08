@@ -87,8 +87,14 @@ function Frame:UnregisterEvent(event) self.events[event] = nil end
 function Frame:UnregisterAllEvents() self.events = {} end
 function Frame:IsMenuOpen() return self.menuOpen or false end
 function Frame:CloseMenu() self.menuOpen = false end
-function Frame:SetDefaultText(text) self.defaultText = text end
-function Frame:OverrideText(text) self.overrideText = text end
+function Frame:SetDefaultText(text)
+  assert(self.template == "WowStyle1DropdownTemplate", "SetDefaultText requires DropdownSelectionTextMixin; filter templates only have SetText")
+  self.defaultText = text
+end
+function Frame:OverrideText(text)
+  assert(self.template == "WowStyle1DropdownTemplate", "OverrideText requires DropdownSelectionTextMixin; filter templates only have SetText")
+  self.overrideText = text
+end
 for _, method in ipairs({"SetFrameStrata", "SetToplevel", "SetClampedToScreen", "EnableMouse", "EnableMouseWheel", "SetBackdrop",
   "SetJustifyH", "SetJustifyV", "SetWordWrap", "RegisterForDrag", "RegisterForClicks",
   "SetTexCoord", "SetColorTexture", "SetHighlightTexture", "SetPushedTexture", "SetPropagateMouseClicks", "SetBlendMode",
@@ -174,6 +180,8 @@ UIParent:SetSize(1600, 900)
 UISpecialFrames, SlashCmdList = {}, {}
 GameTooltip = newFrame()
 local combat, instance, delve, now = false, false, false, 0
+local controlDown = false
+function IsControlKeyDown() return controlDown end
 function InCombatLockdown() return combat end
 function IsInInstance() return instance end
 C_PartyInfo = {IsDelveInProgress=function() return delve end}
@@ -211,9 +219,17 @@ end
 function CreateSettingsListSectionHeaderInitializer() end
 function CreateSettingsButtonInitializer() end
 MinimalSliderWithSteppersMixin = {Label={Right=1}}
+local minimapBroker, minimapRegistration
 function LibStub(name)
   if name == "AceDB-3.0" then return {New=function(_, _, defaults) return defaults end} end
   if name == "AceAddon-3.0" then return {NewAddon=function() return {} end} end
+  if name == "LibDataBroker-1.1" then
+    return {NewDataObject=function(_, _, broker) minimapBroker = broker; return broker end}
+  end
+  if name == "LibDBIcon-1.0" then
+    return {Register=function(_, name, broker) minimapRegistration = {name=name, broker=broker} end,
+      Show=function() end, Hide=function() end}
+  end
   error("Unexpected library: "..name)
 end
 local env = {}
@@ -226,8 +242,10 @@ load("MKPT_Ui.lua")
 load("MKPT_RightClickMenu.lua")
 load("MKPT_SlashCommand.lua")
 load("MKPT_Options.lua")
+load("MKPT_MinimapIcon.lua")
 env.InitializeOptionsMenu()
 env.InitializeSlashCommand()
+env.InitializeMinimapIcon()
 local professions = {}
 env.GetProfessions = function() return professions end
 env.MKPT_Item = {GetTrackedItem=function() return env.trackedItem end}
@@ -287,6 +305,22 @@ check(ui:IsShown() and env.charDb.state.show, "New install opens")
 check(ui.detailValue == "No professions found", "Empty state")
 check(ui.backdropColor[4] == 1 and UISpecialFrames[1] == "MKPT_Frame", "Opaque panel and Escape registration")
 check(env.CreateUI() == ui and #UISpecialFrames == 1, "Initialization is idempotent")
+check(ui.filterButton.template == "WowStyle1FilterDropdownTemplate" and ui.filterButton:GetText() == "Filter",
+  "Filter uses the fixed-text API, so initialization reaches completion")
+check(minimapRegistration.name == ADDON_NAME and minimapRegistration.broker == minimapBroker,
+  "Actual minimap broker is registered for the installed addon name")
+minimapBroker.OnClick(nil, "LeftButton")
+check(not ui:IsShown() and not env.charDb.state.show, "Minimap click closes initialized window")
+minimapBroker.OnClick(nil, "LeftButton")
+check(ui:IsShown() and env.charDb.state.show, "Minimap click reopens window")
+minimapBroker.OnClick(nil, "RightButton")
+check(env.IsShowingRightClickMenu(), "Minimap right click opens native menu")
+lastContextMenu:Hide()
+controlDown = true
+minimapBroker.OnClick(nil, "LeftButton")
+check(env.db.ui.autohide and env.charDb.state.show, "Minimap Ctrl-click changes autohide without closing window")
+minimapBroker.OnClick(nil, "LeftButton")
+controlDown = false
 check(ui.listInset.Background.atlas == "Professions-background-summarylist" and not ui.listInset.Bg:IsShown(),
   "Recipe background does not inherit the tiled marble texture")
 check(ui.scrollFrame.ScrollBar.template == "MinimalScrollBar" and ui.detailScroll.ScrollBar.template == "MinimalScrollBar",

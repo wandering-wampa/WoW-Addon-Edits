@@ -169,9 +169,9 @@ function MKPT_env.CreateUI()
   f.filterButton = CreateFrame("DropdownButton", nil, f, "WowStyle1FilterDropdownTemplate")
   f.filterButton:SetWidth(100)
   f.filterButton:SetPoint("RIGHT", f.settingsButton, "LEFT", -8, 0)
-  f.filterButton:SetDefaultText(FILTER or L["Show/Hide"])
+  -- Filter templates use DropdownTextMixin, not DropdownSelectionTextMixin.
+  f.filterButton:SetText(FILTER or L["Show/Hide"])
   f.filterButton:SetupMenu(function(_, root) MKPT_env.BuildFilterMenu(root) end)
-  f.filterButton:OverrideText(FILTER or L["Show/Hide"])
 
   f.listInset = CreateInset(f, "Professions-background-summarylist")
   f.scrollFrame = CreateScroll(f.listInset, "MKPT_ListScrollFrame")

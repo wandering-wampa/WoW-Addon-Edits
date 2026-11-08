@@ -1,7 +1,7 @@
 # Knowledge Point Tracker — native Retail UI
 
 Personal customization of **Myu's Knowledge Points Tracker 0.9.0**, dated
-**November 8, 2026**. Custom version: **0.9.0-native.6**. Targets **WoW Retail /
+**November 8, 2026**. Custom version: **0.9.0-native.7**. Targets **WoW Retail /
 Midnight**, interface **120100 / 120105**, with the upstream Dragonflight, The War
 Within, and Midnight profession data. No region or realm restrictions were added.
 
@@ -30,6 +30,8 @@ Within, and Midnight profession data. No region or realm restrictions were added
 - Native autohide checkbox; open menus keep the frame visible. Minimap hovering
   can still briefly reveal the window.
 - Safer recycled rows and asynchronous item-name refreshes.
+- Correct fixed-text initialization for the native Filter button, fixing the
+  startup failure in native.6 that prevented the minimap button from opening the window.
 
 Existing knowledge calculations, profession data, requirements, waypoint/TomTom
 tracking and SavedVariables remain intact. Background opacity no longer changes
@@ -84,10 +86,12 @@ updates before replacing this customized copy.
 ## Validation
 
 All 27 Lua files compile under Lua 5.1. `python tools/test_knowledge_tracker.py`
-(requires `lupa`) runs a headless harness covering 63 UI
+(requires `lupa`) runs a headless harness covering 69 UI
 behavior assertions, including expanded lists, row reuse, tracking, menus, scale,
 resize persistence, autohide and visibility transitions, and validates the TOC's
-load paths and addon icon. The release workflow runs these checks before packaging.
+load paths and addon icon. It also checks template-specific dropdown methods and
+the actual minimap broker's left/right/Ctrl-click handlers. The release workflow
+runs these checks before packaging.
 This is not a live-client visual test:
 check layout, scrolling and tracking in WoW after reloading.
 
