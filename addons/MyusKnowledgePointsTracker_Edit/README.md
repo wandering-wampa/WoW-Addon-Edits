@@ -1,7 +1,7 @@
 # Knowledge Point Tracker — native Retail UI
 
 Personal customization of **Myu's Knowledge Points Tracker 0.9.0**, dated
-**November 8, 2026**. Custom version: **0.9.0-native.7**. Targets **WoW Retail /
+**November 8, 2026**. Custom version: **0.9.0-native.8**. Targets **WoW Retail /
 Midnight**, interface **120100 / 120105**, with the upstream Dragonflight, The War
 Within, and Midnight profession data. No region or realm restrictions were added.
 
@@ -25,8 +25,10 @@ Within, and Midnight profession data. No region or realm restrictions were added
   Manual resizing switches to saved fixed dimensions; the context menu can restore
   automatic height. Title-bar dragging and existing lock/scale preferences remain.
   Locking prevents both dragging and manual resizing.
-- Escape and Close save the closed state. Combat/instance/delve hides preserve
-  the user's preference and restore the window when appropriate.
+- Starts closed on every character login and UI reload, including upgrades with
+  an older saved open state. Open it explicitly with the minimap button or `/mkpt`.
+- Escape and Close keep it closed during the session. Combat/instance/delve hides
+  preserve the session's open/closed choice and restore the window when appropriate.
 - Native autohide checkbox; open menus keep the frame visible. Minimap hovering
   can still briefly reveal the window.
 - Safer recycled rows and asynchronous item-name refreshes.
@@ -42,6 +44,8 @@ are retained in saved data but are no longer applied.
 ## Use
 
 - `/mkpt`: toggle the tracker; `/mkpt show` and `/mkpt hide` explicitly open/close.
+- The window starts closed after login or `/reload`; it does not restore a
+  previous session's open state. Other saved settings are preserved.
 - Click a profession to expand it, then a source to track it. Click again to untrack.
 - Use the top dropdowns for expansions and filters. Right-click the frame or a row
   for the combined menu, including Lock Window and Auto hide.
@@ -86,11 +90,12 @@ updates before replacing this customized copy.
 ## Validation
 
 All 27 Lua files compile under Lua 5.1. `python tools/test_knowledge_tracker.py`
-(requires `lupa`) runs a headless harness covering 69 UI
+(requires `lupa`) runs a headless harness covering 76 UI
 behavior assertions, including expanded lists, row reuse, tracking, menus, scale,
 resize persistence, autohide and visibility transitions, and validates the TOC's
 load paths and addon icon. It also checks template-specific dropdown methods and
-the actual minimap broker's left/right/Ctrl-click handlers. The release workflow
+the actual minimap broker's left/right/Ctrl-click handlers, closed startup for new
+and existing characters, and preservation of other saved settings. The release workflow
 runs these checks before packaging.
 This is not a live-client visual test:
 check layout, scrolling and tracking in WoW after reloading.

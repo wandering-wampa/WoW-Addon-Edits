@@ -220,8 +220,13 @@ function CreateSettingsListSectionHeaderInitializer() end
 function CreateSettingsButtonInitializer() end
 MinimalSliderWithSteppersMixin = {Label={Right=1}}
 local minimapBroker, minimapRegistration
+local savedDatabase, defaultVisibility
 function LibStub(name)
-  if name == "AceDB-3.0" then return {New=function(_, _, defaults) return defaults end} end
+  if name == "AceDB-3.0" then return {New=function(_, _, defaults)
+    defaultVisibility = defaults.char.state.show
+    savedDatabase = savedDatabase or defaults
+    return savedDatabase
+  end} end
   if name == "AceAddon-3.0" then return {NewAddon=function() return {} end} end
   if name == "LibDataBroker-1.1" then
     return {NewDataObject=function(_, _, broker) minimapBroker = broker; return broker end}
@@ -301,7 +306,7 @@ end
 local function click(row, button) row.scripts.OnClick(row, button or "LeftButton") end
 local ui = env.CreateUI()
 env.UpdateUiVisibility()
-check(ui:IsShown() and env.charDb.state.show, "New install opens")
+check(not defaultVisibility and not ui:IsShown() and not env.charDb.state.show, "New install defaults to a closed window")
 check(ui.detailValue == "No professions found", "Empty state")
 check(ui.backdropColor[4] == 1 and UISpecialFrames[1] == "MKPT_Frame", "Opaque panel and Escape registration")
 check(env.CreateUI() == ui and #UISpecialFrames == 1, "Initialization is idempotent")
@@ -309,6 +314,8 @@ check(ui.filterButton.template == "WowStyle1FilterDropdownTemplate" and ui.filte
   "Filter uses the fixed-text API, so initialization reaches completion")
 check(minimapRegistration.name == ADDON_NAME and minimapRegistration.broker == minimapBroker,
   "Actual minimap broker is registered for the installed addon name")
+minimapBroker.OnClick(nil, "LeftButton")
+check(ui:IsShown() and env.charDb.state.show, "First minimap click opens the initially closed window")
 minimapBroker.OnClick(nil, "LeftButton")
 check(not ui:IsShown() and not env.charDb.state.show, "Minimap click closes initialized window")
 minimapBroker.OnClick(nil, "LeftButton")
@@ -502,4 +509,24 @@ SlashCmdList.MKPT("hide")
 combat = false
 env.UpdateUiVisibility()
 check(not ui:IsShown() and not env.charDb.state.show, "Explicit hide during combat remains closed afterward")
+-- Reinitialization models loading the same character's saved state on login or
+-- /reload. Saved visibility must not cause an unsolicited popup after upgrading.
+minimapBroker.OnClick(nil, "LeftButton")
+local savedUi, savedConfig, savedCharacterConfig = env.db.ui, env.db.config, env.charDb.config
+local savedExpansion = env.charDb.state.expansion
+check(ui:IsShown() and savedDatabase.char.state.show, "Existing character can leave an open state in saved data")
+env.InitializeSavedVariables()
+env.UpdateUiVisibility()
+check(not ui:IsShown() and not env.charDb.state.show, "Login or reload clears an older saved open state")
+check(env.db.ui == savedUi and env.db.config == savedConfig and env.charDb.config == savedCharacterConfig and
+  env.charDb.state.expansion == savedExpansion, "Startup visibility reset preserves unrelated settings")
+env.RevealUi()
+env.RefreshAutoHide()
+check(not ui:IsShown(), "Minimap hover does not open a closed window")
+SlashCmdList.MKPT("show")
+check(ui:IsShown(), "Explicit slash show still opens the window after startup reset")
+SlashCmdList.MKPT("hide")
+env.InitializeSavedVariables()
+env.UpdateUiVisibility()
+check(not ui:IsShown() and not env.charDb.state.show, "Existing closed state remains closed on login or reload")
 print("PASS: "..checks.." UI behavior checks (headless Lua 5.1)")

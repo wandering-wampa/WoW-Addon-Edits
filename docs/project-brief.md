@@ -25,6 +25,10 @@ header artwork, or retained excessive text color. Do not restart from those
 rejected treatments. The native.6 Filter-template initialization failure is
 documented in the style guide so future edits do not repeat it.
 
+Native.8 retains that appearance and starts the window closed on login and UI
+reload, including existing characters with a saved open state. Opening the
+tracker is an explicit action; other saved preferences remain intact.
+
 ## Working approach
 
 1. Inspect the installed addon, Git status and its documentation. Preserve newer

@@ -6,7 +6,7 @@ function MKPT_env.InitializeSavedVariables()
       state = {
         expansion = GetExpansionLevel() == Enum.ExpansionLevel.WarWithin and Enum.ExpansionLevel.WarWithin or
         Enum.ExpansionLevel.Midnight,
-        show = true,
+        show = false,
         firstTimeLoaded = true,
       },
       config = {
@@ -64,4 +64,7 @@ function MKPT_env.InitializeSavedVariables()
   local db = LibStub("AceDB-3.0"):New("MKPT_Config", defaults)
   MKPT_env.db = db.global
   MKPT_env.charDb = db.char
+  -- Visibility belongs to this UI session. Never reopen on login or /reload,
+  -- including characters with a saved open state from an older version.
+  MKPT_env.charDb.state.show = false
 end
