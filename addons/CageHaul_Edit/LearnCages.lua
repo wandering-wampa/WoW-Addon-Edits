@@ -49,11 +49,8 @@ local function FindLearnableCage()
                 local cage, species = addon.GetCageLinkInfo(info.hyperlink)
                 if cage or info.itemID == CAGE_ITEM_ID then
                     if not species then
-                        local data = C_TooltipInfo.GetBagItem(bag, slot)
-                        if data and data.type == Enum.TooltipDataType.BattlePet then
-                            TooltipUtil.SurfaceArgs(data)
-                            species = tonumber(data.battlePetSpeciesID)
-                        end
+                        local _, tooltipSpecies = addon.GetCageTooltipInfo(C_TooltipInfo.GetBagItem(bag, slot))
+                        species = tooltipSpecies
                     end
                     local key = CageKey(bag, slot, info)
                     if (unanswered[key] or 0) < MAX_ATTEMPTS and not IsSpeciesFull(species) then

@@ -12,6 +12,16 @@ To deposit, open the Blizzard guild bank, select the destination tab, and type `
 
 To withdraw, select the source tab in the guild bank and type `/cagehaul retrieve`. It moves pet cages into your normal bags until they're full, the tab is out of cages, or you reach your guild withdrawal limit. `/cagehaul stop` also stops withdrawals.
 
+Open **Esc → Options → AddOns → Cage Haul** or type `/cagehaul settings` to choose a preset and turn the minimap button on or off. The setting takes effect immediately. `/cagehaul` still opens the window with the button hidden.
+
+| Preset | Behavior |
+| --- | --- |
+| **Full Swap** | Cages all eligible pets, including last copies, and retrieves all cages from the selected tab. This is the default. |
+| **Cage Extras** | Keeps zero to three copies per species. Ranks copies by quality, then level. The favorite and name protections can keep additional pets. Retrieve can take any cage from the tab. |
+| **Fill Collection** | Retrieves one learnable cage per missing species, accounting for cages already in bags. Optional upgrades and extras follow missing species and respect species limits. Caging is disabled in this preset. |
+
+Deposit moves cages already in bags in every preset. Filtered retrieval leaves unidentified cages and cages above the highest learned level in the tab. With a guild bank tab open, `/cagehaul status` previews matching cages, free bag or tab space, and withdrawal limits without moving anything. Settings apply to the next batch.
+
 Close the guild bank before learning. Each **Learn** click uses the next eligible cage in your bags. WoW requires one click per pet. For a macro, use `/click CageHaulLearnButton`. Clicks during the global or item cooldown do not consume a cage attempt. The addon skips cages at their species cap or after two unconfirmed attempts. `/cagehaul learn` displays the macro command and resets skipped cages.
 
 The scan covers your entire learned collection regardless of Pet Journal filters. WoW skips nontradable and otherwise unavailable pets. Heal injured pets, take pets out of their active battle slots and unwrap gifts before rerunning. Bags reserved for reagents or other specialized items do not count as space. If WoW misses or rejects a request, the batch checks the journal and retries eligible pets after a short pause. After three attempts it sets that pet aside for the session and continues with the rest. `/cagehaul retry` makes those pets eligible for another attempt.

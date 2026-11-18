@@ -26,13 +26,6 @@ function addon.FreeBagSlots()
 end
 local FreeBagSlots = addon.FreeBagSlots
 
-function addon.GetCageLinkInfo(link)
-    if not link then return false end
-    local data = link:match("|H([^|]+)|h") or link
-    local species = tonumber(data:match("^battlepet:(%d+)"))
-    return species ~= nil or tonumber(data:match("^item:(%d+)")) == 82800, species
-end
-
 local function PetBlocker(id)
     if not journal.PetIsTradable(id) or journal.PetIsRevoked(id) or journal.PetIsLockedForConvert(id) then
         return "unavailable"
@@ -47,11 +40,46 @@ local function PetBlocker(id)
     end
 end
 
-local function ScanJournal()
+local function FindKeepers(ids, profile)
+    local speciesGroups, keepers = {}, {}
+    for _, id in ipairs(ids) do
+        local info = journal.GetPetInfoTableByPetID(id)
+        if info and info.speciesID and not journal.PetIsRevoked(id) then
+            local group = speciesGroups[info.speciesID] or {}
+            speciesGroups[info.speciesID] = group
+            local rank = profile.keep > 0 and addon.JournalRank(id, info)
+            group[#group + 1] = { id = id, rank = rank or -1, level = info.petLevel or 0 }
+            if addon.IsProtectedPet(info, profile) then
+                keepers[id] = "protected"
+            elseif profile.keep > 0 and not rank then
+                keepers[id] = "unknown"
+            end
+        else
+            keepers[id] = "unknown"
+        end
+    end
+    for _, group in pairs(speciesGroups) do
+        table.sort(group, function(a, b)
+            if a.rank ~= b.rank then return a.rank > b.rank end
+            if a.level ~= b.level then return a.level > b.level end
+            return a.id < b.id
+        end)
+        for i = 1, math.min(profile.keep, #group) do
+            local id = group[i].id
+            keepers[id] = keepers[id] or "kept"
+        end
+    end
+    return keepers
+end
+
+local function ScanJournal(profile)
     local queue = {}
-    local blocked = { unavailable = 0, slotted = 0, injured = 0, wrapped = 0, rejected = 0 }
-    for _, id in ipairs(journal.GetOwnedPetIDs()) do
-        local reason = PetBlocker(id)
+    local blocked = { unavailable = 0, slotted = 0, injured = 0, wrapped = 0, rejected = 0,
+        kept = 0, protected = 0, unknown = 0 }
+    local ids = journal.GetOwnedPetIDs()
+    local keepers = profile.preset == "extras" and FindKeepers(ids, profile) or {}
+    for _, id in ipairs(ids) do
+        local reason = PetBlocker(id) or keepers[id]
         if reason then
             blocked[reason] = blocked[reason] + 1
         else
@@ -59,6 +87,14 @@ local function ScanJournal()
         end
     end
     return queue, blocked
+end
+
+local function CanCage(id, info, profile)
+    if not info or PetBlocker(id) then return false end
+    if profile.preset ~= "extras" then return true end
+    if not info.speciesID or addon.IsProtectedPet(info, profile) then return false end
+    local owned = journal.GetNumCollectedInfo(info.speciesID)
+    return owned and owned > profile.keep
 end
 
 local function ActionBlocker()
@@ -165,7 +201,7 @@ local function RecoverRequest(request)
             ConfirmCage(request)
         elseif activeBatch ~= batch then
             ClearRequest(request)
-        elseif PetBlocker(request.id) then
+        elseif not CanCage(request.id, journal.GetPetInfoTableByPetID(request.id), batch.profile) then
             ClearRequest(request)
             Continue(batch)
         else
@@ -204,7 +240,7 @@ CageNext = function(batch)
         local id = batch.queue[batch.index]
         batch.index = batch.index + 1
         local info = journal.GetPetInfoTableByPetID(id)
-        if info and not PetBlocker(id) then
+        if CanCage(id, info, batch.profile) then
             local request = { id = id, name = info.name or "Battle pet", batch = batch, attempts = 0 }
             pending = request
             SendRequest(request)
@@ -237,21 +273,27 @@ local function Start(single)
         Message(blocker)
         return
     end
+    local profile = addon.Profile()
+    if profile.preset == "fill" then
+        Message("Fill Collection is for retrieving cages. Select Cage Extras or Full Swap to cage pets.")
+        return
+    end
     local slots = FreeBagSlots()
     if slots == 0 then
         Message("Make room in your normal bags before caging.")
         return
     end
-    local queue = ScanJournal()
+    local queue = ScanJournal(profile)
     if #queue == 0 then
-        Message("No eligible pets. Use /cagehaul to see what's skipped.")
+        Message("No eligible pets. Use /cagehaul status to see what's skipped.")
         return
     end
 
-    activeBatch = { queue = queue, index = 1, caged = 0, delay = CAGE_DELAY, single = single }
+    activeBatch = { queue = queue, index = 1, caged = 0, delay = CAGE_DELAY, single = single, profile = profile }
     addon.RefreshPanel()
     if not single then
-        Message(("Starting batch of up to %d. Use /cagehaul stop to stop."):format(math.min(#queue, slots)))
+        Message(("%s: starting a batch of up to %d. Use /cagehaul stop to stop.")
+            :format(addon.PresetNames[profile.preset], math.min(#queue, slots)))
     end
     CageNext(activeBatch)
 end
@@ -265,17 +307,18 @@ local function Stop()
 end
 
 local function Preview()
-    local queue, blocked = ScanJournal()
-    Message(("%d eligible, %d free normal bag slots. Includes last copies, favorites and named pets.")
-        :format(#queue, FreeBagSlots()))
-    Message(("Skipped: %d unavailable, %d slotted, %d injured, %d to unwrap, %d rejected.")
-        :format(blocked.unavailable, blocked.slotted, blocked.injured, blocked.wrapped, blocked.rejected))
-    Message("/cagehaul start to fill your bags, /cagehaul stop to stop, or /cagehaul one for one pet.")
-    Message("/cagehaul deposit or /cagehaul retrieve to move cages between your bags and the selected guild bank tab.")
-    Message("/cagehaul learn for the macro that learns one eligible cage per press.")
-    if blocked.rejected > 0 then
-        Message("/cagehaul retry clears the list of pets WoW rejected this session.")
+    local profile = addon.Profile()
+    Message(("%s. %d free normal bag slots."):format(addon.PresetNames[profile.preset], FreeBagSlots()))
+    if profile.preset ~= "fill" then
+        local queue, blocked = ScanJournal(profile)
+        Message(("Cage Pets: %d eligible; up to %d fit. Kept %d strongest, %d protected, %d unidentified.")
+            :format(#queue, math.min(#queue, FreeBagSlots()), blocked.kept, blocked.protected, blocked.unknown))
+        Message(("Skipped: %d unavailable, %d slotted, %d injured, %d to unwrap, %d rejected.")
+            :format(blocked.unavailable, blocked.slotted, blocked.injured, blocked.wrapped, blocked.rejected))
+    else
+        Message("Cage Pets is off in Fill Collection.")
     end
+    addon.PreviewBank(profile)
 end
 
 local events = CreateFrame("Frame")
@@ -311,6 +354,8 @@ SlashCmdList.CAGEHAUL = function(message)
     local command = message:match("^%s*(%S*)"):lower()
     if command == "" or command == "panel" then
         addon.TogglePanel()
+    elseif command == "settings" then
+        addon.OpenSettings()
     elseif command == "start" then
         Start(false)
     elseif command == "stop" then

@@ -1,11 +1,14 @@
 ## Interface: 120105
 ## Title: Cage Haul
 ## Notes: Cage pets, move cages to or from a guild bank tab, and learn the next cage.
-## Version: 1.3.2
+## Version: 1.4.0
 ## SavedVariables: CageHaulSettings
 
+Profiles.lua
 CageHaul.lua
+FillCollection.lua
 GuildDeposit.lua
 LearnCages.lua
 Panel.lua
 Minimap.lua
+Settings.lua

@@ -4,6 +4,7 @@ local panel
 function addon.RefreshPanel()
     if not panel then return end
     local mode = addon.BankTransferMode()
+    panel.TitleContainer.TitleText:SetText("Cage Haul: " .. addon.PresetNames[addon.GetSettings().preset])
     panel.Cage:SetText(addon.IsCaging() and "Stop Caging" or "Cage Pets")
     panel.Deposit:SetText(mode == "deposit" and "Stop Deposit" or "Deposit")
     panel.Retrieve:SetText(mode == "retrieve" and "Stop Retrieval" or "Retrieve")
@@ -40,7 +41,6 @@ local function CreatePanel()
     panel:EnableMouse(true)
     ButtonFrameTemplate_HidePortrait(panel)
     ButtonFrameTemplate_HideButtonBar(panel)
-    panel.TitleContainer.TitleText:SetText("Cage Haul")
     panel.CloseButton:SetScript("OnClick", function() addon.TogglePanel() end)
 
     local titleDrag = CreateFrame("Frame", nil, panel)

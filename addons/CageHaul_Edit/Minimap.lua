@@ -3,8 +3,7 @@ local START_ANGLE = 170
 
 local function CreateLauncher()
     if not Minimap or CageHaulMinimapButton then return end
-    if type(CageHaulSettings) ~= "table" then CageHaulSettings = {} end
-    local settings = CageHaulSettings
+    local settings = addon.GetSettings()
     if type(settings.minimapAngle) ~= "number" or not (settings.minimapAngle >= 0 and settings.minimapAngle < 360) then
         settings.minimapAngle = START_ANGLE
     end
@@ -70,6 +69,13 @@ local function CreateLauncher()
     Minimap:HookScript("OnSizeChanged", Position)
     button:SetScript("OnShow", Position)
     Position()
+    addon.RefreshMinimapVisibility()
+end
+
+function addon.RefreshMinimapVisibility()
+    if CageHaulMinimapButton then
+        CageHaulMinimapButton:SetShown(addon.GetSettings().showMinimap)
+    end
 end
 
 local events = CreateFrame("Frame")

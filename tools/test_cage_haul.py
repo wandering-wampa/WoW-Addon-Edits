@@ -15,6 +15,7 @@ BINDING = ElementTree.parse(ADDON / "Bindings.xml").find("Binding").text
 MOCK = r'''
 local now, timers, messages, owned, events = 0, {}, {}, {}, {}
 calls, freeSlots, SlashCmdList = {}, 40, {}
+petData, speciesLimits = {}, {}
 Enum = { BagIndex = { Backpack = 0, Bag_4 = 4 } }
 C_Container = { GetContainerNumFreeSlots = function(bag)
     assert(bag >= 0 and bag <= 4, "Only normal bags should be scanned")
@@ -90,7 +91,15 @@ C_PetJournal = {
         return list
     end,
     GetPetInfoTableByPetID = function(id)
-        if owned[id] then return { name = "Pet " .. id } end
+        if owned[id] then return petData[id] or { name = "Pet " .. id } end
+    end,
+    GetPetStats = function(id) return nil, nil, nil, nil, petData[id] and petData[id].rarity end,
+    GetNumCollectedInfo = function(species)
+        local count = 0
+        for id in pairs(owned) do
+            if petData[id] and petData[id].speciesID == species then count = count + 1 end
+        end
+        return count, speciesLimits[species] or 3
     end,
     PetIsTradable = function(id) return owned[id] end,
     PetIsRevoked = no, PetIsLockedForConvert = no, PetIsSlotted = no,
@@ -128,9 +137,12 @@ function GetGuildBankItemLink(id, slot)
     local item = tabs[id][slot]
     if item and item.hyperlink then return item.hyperlink end
 end
-C_TooltipInfo = { GetGuildBankItem = function(id, slot)
-    local item = tabs[id][slot]
-    return item and item.tooltip
+C_TooltipInfo = {
+    GetGuildBankItem = function(id, slot) return tabs[id][slot] and tabs[id][slot].tooltip end,
+    GetBagItem = function(_, slot) return bags[slot] and bags[slot].tooltip end,
+}
+TooltipUtil = { SurfaceArgs = function(data)
+    data.battlePetSpeciesID, data.battlePetLevel, data.battlePetBreedQuality = data.species, data.level, data.quality
 end }
 function GetCursorInfo() return cursor and "item" end
 function ClearCursor() cursor, source = nil, nil end
@@ -190,7 +202,7 @@ Minimap = {
     end,
 }
 function GetCursorPosition() return 200, 400 end
-GameTooltip = { Hide = function() end }
+GameTooltip = { Hide = function() end, GetOwner = function() end }
 local createEventFrame = CreateFrame
 local function noOp() end
 local function script(self, event, handler) self.scripts[event] = handler end
@@ -207,7 +219,7 @@ function CreateFrame(kind, name, parent, template)
         function frame:IsShown() return self.shown end
         function frame:Hide() self.shown = false end
         frame.CloseButton = { scripts = {}, SetScript = script }
-        frame.TitleContainer = { TitleText = { SetText = noOp } }
+        frame.TitleContainer = { TitleText = { SetText = function(self, text) self.text = text end } }
         frame.children = {}
     elseif kind == "Frame" then
         assert(template == nil and parent == CageHaulPanel)
@@ -217,6 +229,7 @@ function CreateFrame(kind, name, parent, template)
         frame.SetSize, frame.SetFrameLevel, frame.SetToplevel = noOp, noOp, noOp
         frame.SetHighlightTexture, frame.LockHighlight, frame.UnlockHighlight = noOp, noOp, noOp
         frame.ClearAllPoints = noOp
+        function frame:SetShown(shown) self.shown = shown end
         function frame:RegisterForClicks(click) assert(click == "LeftButtonUp") end
         function frame:RegisterForDrag(button) assert(button == "LeftButton") end
         function frame:SetPoint(point, parent, anchor, x, y)
@@ -266,6 +279,46 @@ function press(button)
 end
 '''
 
+SETTINGS_MOCK = r'''
+local category = { GetID = function() return 123 end }
+local layout = { AddInitializer = function(_, header) assert(type(header) == "string") end }
+settingsControls = {}
+Settings = {}
+function Settings.RegisterVerticalLayoutCategory(label)
+    assert(label == "Cage Haul")
+    return category, layout
+end
+function Settings.RegisterAddOnSetting(parent, variable, key, db, valueType, label, default)
+    assert(parent == category and variable == "CAGEHAUL_" .. key and db == CageHaulSettings)
+    assert(type(db[key]) == valueType and type(default) == valueType and #label > 0)
+    local setting = {}
+    function setting:SetValueChangedCallback(fn) self.callback = fn end
+    function setting:SetValue(value)
+        assert(type(value) == valueType)
+        db[key] = value
+        if self.callback then self.callback(self, value) end
+    end
+    settingsControls[key] = setting
+    return setting
+end
+function Settings.CreateCheckbox(parent, setting, tooltip)
+    assert(parent == category and #tooltip > 0)
+    setting.widget = "checkbox"
+end
+function Settings.CreateDropdown(parent, setting, options, tooltip)
+    assert(parent == category and #tooltip > 0)
+    setting.widget, setting.options = "dropdown", options()
+end
+function Settings.CreateControlTextContainer()
+    local data = {}
+    return { Add = function(_, value, label) data[#data + 1] = { value, label } end,
+        GetData = function() return data end }
+end
+function CreateSettingsListSectionHeaderInitializer(label) return label end
+function Settings.RegisterAddOnCategory(parent) assert(parent == category); registeredSettings = true end
+function Settings.OpenToCategory(id) assert(registeredSettings and id == 123); settingsOpened = true end
+'''
+
 LEARN_MOCK = r'''
 Enum.PlayerInteractionType = { GuildBanker = 10, Merchant = 5 }
 C_PlayerInteractionManager = { IsInteractingWithNpcOfType = function(kind) return interaction == kind end }
@@ -305,6 +358,7 @@ def scenario(lua_code, bank=False, learn=False):
     if bank:
         lua.execute(BANK_MOCK)
     lua.execute(UI_MOCK)
+    lua.execute(SETTINGS_MOCK)
     if learn:
         lua.execute(LEARN_MOCK)
     namespace = lua.table()
@@ -587,3 +641,89 @@ scenario(r'''
 ''')
 
 print("PASS: minimap launcher initializes at login, toggles the panel, and saves scaled drag positioning")
+
+scenario(r'''
+    CageHaulSettings = { minimapAngle = 195, showMinimap = false }
+    fire("PLAYER_LOGIN")
+    assert(registeredSettings and not CageHaulMinimapButton.shown)
+    assert(settingsControls.showMinimap.widget == "checkbox" and #settingsControls.preset.options == 3)
+    assert(#settingsControls.keep.options == 4 and settingsControls.keep.options[1][1] == 0)
+    settingsControls.showMinimap:SetValue(true)
+    assert(CageHaulMinimapButton.shown and CageHaulSettings.minimapAngle == 195)
+    press(CageHaulMinimapButton)
+    settingsControls.preset:SetValue("fill")
+    assert(CageHaulPanel.TitleContainer.TitleText.text == "Cage Haul: Fill Collection")
+    settingsControls.showMinimap:SetValue(false)
+    assert(not CageHaulMinimapButton.shown)
+    slash("")
+    assert(not CageHaulPanel:IsShown())
+    slash("settings")
+    assert(settingsOpened)
+''')
+
+scenario(r'''
+    CageHaulSettings = { preset = "extras", keep = 1 }
+    populate(5)
+    petData[1] = { speciesID = 10, petLevel = 9, rarity = 4 }
+    petData[2] = { speciesID = 10, petLevel = 9, rarity = 2 }
+    petData[3] = { speciesID = 10, petLevel = 25, rarity = 3, isFavorite = true }
+    petData[4] = { speciesID = 10, petLevel = 2, rarity = 2, customName = "Named" }
+    petData[5] = { speciesID = 12, petLevel = 1, rarity = 1 }
+    function onCage(id) cage(id, "PET_JOURNAL_PET_DELETED") end
+    slash("status")
+    assert(#calls == 0 and said("1 eligible") and said("2 protected"))
+    slash("start")
+    advance(2)
+    assert(#calls == 1 and calls[1] == 2)
+    CageHaulSettings.keep, CageHaulSettings.protectFavorites, CageHaulSettings.protectNamed = 0, false, false
+    slash("start")
+    advance(3)
+    assert(table.concat(calls, ",") == "2,1,3,4,5", "A zero-copy target intentionally includes last copies")
+''')
+
+scenario(r'''
+    local function pet(species, level, quality)
+        return { itemID = 82800, hyperlink = ("battlepet:%d:%d:%d"):format(species, level, quality) }
+    end
+    CageHaulSettings = { preset = "fill" }
+    populate(2)
+    petData[1] = { speciesID = 200, petLevel = 20, rarity = 2 }
+    petData[2] = { speciesID = 900, petLevel = 25, rarity = 1 }
+    bags[1] = pet(400, 10, 1)
+    tabs[1][1], tabs[1][2], tabs[1][3] = pet(100, 1, 1), pet(100, 4, 3), pet(200, 10, 3)
+    tabs[1][4], tabs[1][5], tabs[1][6] = { itemID = 82800, hyperlink = "item:82800" }, pet(500, 26, 3), pet(400, 10, 1)
+    tabs[1][98] = { itemID = 82800, hyperlink = "item:82800",
+        tooltip = { type = Enum.TooltipDataType.BattlePet, species = 600, level = 1, quality = 1 } }
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    slash("status")
+    assert(said("2 missing species, 0 upgrades, 0 extra copies"))
+    assert(said("1 species covered by bag cages, 1 above level 25") and said("1 unidentified"))
+    slash("start")
+    assert(#calls == 0 and said("Select Cage Extras or Full Swap"))
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(4)
+    assert(#withdrawals == 2 and withdrawals[1][2] == 2 and withdrawals[2][2] == 98)
+    assert(tabs[1][1] and tabs[1][3] and tabs[1][4] and tabs[1][5] and tabs[1][6])
+''', bank=True)
+
+scenario(r'''
+    local function pet(species, level, quality)
+        return { itemID = 82800, hyperlink = ("battlepet:%d:%d:%d"):format(species, level, quality) }
+    end
+    CageHaulSettings = { preset = "fill", takeUpgrades = true, takeExtras = true }
+    populate(1)
+    petData[1] = { speciesID = 200, petLevel = 25, rarity = 2 }
+    bags[1] = pet(200, 8, 1)
+    tabs[1][1], tabs[1][2], tabs[1][3], tabs[1][4] = pet(200, 12, 3), pet(200, 22, 2), pet(99, 2, 0), pet(99, 1, 0)
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    slash("status")
+    assert(said("1 missing species, 1 upgrades, 1 extra copies"))
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(5)
+    assert(#withdrawals == 3 and withdrawals[1][2] == 3 and withdrawals[2][2] == 1 and withdrawals[3][2] == 4)
+    assert(tabs[1][2], "Existing pets and bag cages must count against the species cap")
+''', bank=True)
+
+print("PASS: native settings, saved minimap toggle, Cage Extras protections, and Fill Collection priority and limits")
