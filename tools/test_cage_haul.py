@@ -105,13 +105,15 @@ BANK_MOCK = r'''
 local cursor, source
 tab, bankVisible, allowed, bankMoves = 1, true, true, {}
 bags, tabs = {}, { {}, {} }
-MAX_GUILDBANK_SLOTS_PER_TAB = 3
+-- The live Guild Bank keeps its 98-slot limit local to Blizzard's addon.
+assert(MAX_GUILDBANK_SLOTS_PER_TAB == nil)
 GuildBankFrame = { mode = "bank", IsVisible = function() return bankVisible end }
 function GetCurrentGuildBankTab() return tab end
 function GetNumGuildBankTabs() return #tabs end
 function GetGuildBankTabInfo(id) return "Tab " .. id, 1, true, allowed end
 function QueryGuildBankTab(id) assert(id == tab) end
 function GetGuildBankItemInfo(id, slot)
+    assert(slot >= 1 and slot <= 98, "Only valid guild bank slots should be scanned")
     local item = tabs[id][slot]
     if item then return 123, 1, false end
 end
@@ -217,7 +219,7 @@ scenario(r'''
     local other = { itemID = 123 }
     local cage = { itemID = 82800 }
     local linkedCage = { itemID = 0, hyperlink = "|cff777777|Hbattlepet:1:2:3|h[Pet]|h|r" }
-    tabs[2][2] = other
+    for slot = 1, 96 do tabs[2][slot] = other end
     bags[1], bags[2], bags[3], bags[4] = other, cage, linkedCage, cage
     tab = 2
     slash("deposit")
@@ -228,6 +230,7 @@ scenario(r'''
     assert(#bankMoves == 1, "Wait for the first cage to arrive before moving another")
     advance(2)
     assert(#bankMoves == 2 and #tabs[1] == 0 and tabs[2][2] == other)
+    assert(tabs[2][97] == cage and tabs[2][98] == linkedCage)
     assert(bags[1] == other and bags[4] == cage and not bags[2] and not bags[3])
     assert(said("Deposited 2 cages into Tab 2"))
     tab = 1

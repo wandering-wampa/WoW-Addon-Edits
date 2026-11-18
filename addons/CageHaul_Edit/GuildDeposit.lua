@@ -1,6 +1,8 @@
 local _, addon = ...
 local Message = addon.Message
 local CAGE_ITEM_ID = 82800
+-- Matches the private slot count in Retail's Blizzard_GuildBankUI.
+local GUILD_BANK_SLOTS_PER_TAB = 98
 local TRANSFER_TIMEOUT = 8
 local deposit
 local DepositNext
@@ -55,7 +57,7 @@ local function IsEmptySlot(tab, slot)
 end
 
 local function FindEmptySlot(tab)
-    for slot = 1, MAX_GUILDBANK_SLOTS_PER_TAB do
+    for slot = 1, GUILD_BANK_SLOTS_PER_TAB do
         if IsEmptySlot(tab, slot) then
             return slot
         end
