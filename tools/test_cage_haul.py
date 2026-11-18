@@ -7,10 +7,10 @@ from lupa.lua51 import LuaRuntime
 
 ADDON = Path(__file__).resolve().parents[1] / "addons" / "CageHaul_Edit"
 SOURCE = (ADDON / "CageHaul.lua").read_text(encoding="utf-8")
+DEPOSIT = (ADDON / "GuildDeposit.lua").read_text(encoding="utf-8")
 BINDING = ElementTree.parse(ADDON / "Bindings.xml").find("Binding").text
 MOCK = r'''
 local now, timers, messages, owned, events = 0, {}, {}, {}, {}
-local onEvent
 calls, freeSlots, SlashCmdList = {}, 40, {}
 Enum = { BagIndex = { Backpack = 0, Bag_4 = 4 } }
 C_Container = { GetContainerNumFreeSlots = function(bag)
@@ -28,16 +28,20 @@ function said(fragment)
 end
 function CreateFrame(kind)
     assert(kind == "Frame")
-    return {
-        RegisterEvent = function(_, event) events[event] = true end,
-        SetScript = function(_, script, handler)
+    local frame = {
+        RegisterEvent = function(self, event)
+            events[event] = events[event] or {}
+            table.insert(events[event], self)
+        end,
+        SetScript = function(self, script, handler)
             assert(script == "OnEvent")
-            onEvent = handler
+            self.onEvent = handler
         end,
     }
+    return frame
 end
 function fire(event, id)
-    if events[event] then onEvent(nil, event, id) end
+    for _, frame in ipairs(events[event] or {}) do frame:onEvent(event, id) end
 end
 local function schedule(delay, callback)
     local timer = { at = now + delay, callback = callback }
@@ -46,6 +50,7 @@ local function schedule(delay, callback)
     return timer
 end
 C_Timer = { After = schedule, NewTimer = schedule }
+function GetTime() return now end
 function advance(seconds)
     local untilTime = now + seconds
     while true do
@@ -96,10 +101,59 @@ function slash(command) SlashCmdList.CAGEHAUL(command) end
 '''
 
 
-def scenario(lua_code):
+BANK_MOCK = r'''
+local cursor, source
+tab, bankVisible, allowed, bankMoves = 1, true, true, {}
+bags, tabs = {}, { {}, {} }
+MAX_GUILDBANK_SLOTS_PER_TAB = 3
+GuildBankFrame = { mode = "bank", IsVisible = function() return bankVisible end }
+function GetCurrentGuildBankTab() return tab end
+function GetNumGuildBankTabs() return #tabs end
+function GetGuildBankTabInfo(id) return "Tab " .. id, 1, true, allowed end
+function QueryGuildBankTab(id) assert(id == tab) end
+function GetGuildBankItemInfo(id, slot)
+    local item = tabs[id][slot]
+    if item then return 123, 1, false end
+end
+function GetGuildBankItemLink(id, slot)
+    local item = tabs[id][slot]
+    if item and item.hyperlink then return item.hyperlink end
+end
+function GetCursorInfo() return cursor and "item" end
+function ClearCursor() cursor, source = nil, nil end
+function C_Container.GetContainerNumSlots(bag) return bag == 0 and 5 or 0 end
+function C_Container.GetContainerItemInfo(bag, slot)
+    assert(bag == 0)
+    return bags[slot]
+end
+function C_Container.PickupContainerItem(bag, slot)
+    assert(bag == 0 and not cursor)
+    cursor, source = bags[slot], slot
+end
+function PickupGuildBankItem(id, slot)
+    assert(id == tab and not tabs[id][slot] and cursor)
+    if rejectMove then return end
+    local item, from = cursor, source
+    cursor, source = nil, nil
+    table.insert(bankMoves, { id, slot })
+    if not silentMove then
+        C_Timer.After(0.5, function()
+            tabs[id][slot], bags[from] = item, nil
+            fire("GUILDBANKBAGSLOTS_CHANGED")
+        end)
+    end
+end
+'''
+
+
+def scenario(lua_code, bank=False):
     lua = LuaRuntime()
     lua.execute(MOCK)
-    lua.execute(SOURCE)
+    if bank:
+        lua.execute(BANK_MOCK)
+    namespace = lua.table()
+    lua.execute(SOURCE, "CageHaul_Edit", namespace)
+    lua.execute(DEPOSIT, "CageHaul_Edit", namespace)
     lua.execute("function pressKey() " + BINDING + " end")
     lua.execute(lua_code)
 
@@ -158,3 +212,63 @@ scenario(r'''
 ''')
 
 print("PASS: Cage Haul resumes after missing confirmations, retries failures, fills bags, and stops on request")
+
+scenario(r'''
+    local other = { itemID = 123 }
+    local cage = { itemID = 82800 }
+    local linkedCage = { itemID = 0, hyperlink = "|cff777777|Hbattlepet:1:2:3|h[Pet]|h|r" }
+    tabs[2][2] = other
+    bags[1], bags[2], bags[3], bags[4] = other, cage, linkedCage, cage
+    tab = 2
+    slash("deposit")
+    advance(0.2)
+    assert(#bankMoves == 0, "Wait for the selected tab contents to load")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(0.4)
+    assert(#bankMoves == 1, "Wait for the first cage to arrive before moving another")
+    advance(2)
+    assert(#bankMoves == 2 and #tabs[1] == 0 and tabs[2][2] == other)
+    assert(bags[1] == other and bags[4] == cage and not bags[2] and not bags[3])
+    assert(said("Deposited 2 cages into Tab 2"))
+    tab = 1
+    slash("deposit")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(2)
+    assert(not bags[4] and bags[1] == other and said("No caged pets left"))
+''', bank=True)
+
+scenario(r'''
+    local cage = { itemID = 82800 }
+    bags[1], bags[2] = cage, cage
+    allowed = false
+    slash("deposit")
+    assert(said("need permission") and #bankMoves == 0)
+    allowed = true
+    slash("deposit")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(0.6)
+    tab = 2
+    advance(2)
+    assert(#bankMoves == 1 and not tabs[2][1] and bags[2] == cage)
+
+    slash("deposit")
+    fire("GUILDBANKFRAME_CLOSED")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(10)
+    assert(#bankMoves == 1)
+
+    rejectMove = true
+    slash("deposit")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(0.2)
+    assert(#bankMoves == 1 and not GetCursorInfo() and bags[2] == cage)
+    assert(said("did not accept the cage"))
+
+    rejectMove, silentMove = false, true
+    slash("deposit")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(10)
+    assert(#bankMoves == 2 and said("did not confirm the last transfer"))
+''', bank=True)
+
+print("PASS: guild deposits only move cages into empty slots on the selected tab and verify each transfer")
