@@ -22,6 +22,7 @@ jobs:
           python tools/test_appearance_guide.py
           python tools/test_knowledge_tracker.py
           python tools/test_profession_assistance.py
+          python tools/test_cage_haul.py
       - run: python tools/package_addons.py --output dist
       - name: Publish manual-install ZIPs
         env:

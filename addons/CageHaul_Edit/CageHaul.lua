@@ -1,9 +1,12 @@
 local journal = C_PetJournal
 local CAGE_DELAY = 0.35
 local CAGE_TIMEOUT = 8
+local MAX_ATTEMPTS = 3
 local rejected = {}
 local activeBatch
 local pending
+local CageNext
+local SendRequest
 
 local function Message(text)
     print("|cffefc75eCage Haul:|r " .. text)
@@ -62,9 +65,13 @@ local function Finish(reason)
     Message(("%s Caged %d this batch."):format(reason, batch.caged))
 end
 
-local function FailRequest(reason)
-    local request = pending
+local function ClearRequest(request)
+    request.timer:Cancel()
     pending = nil
+end
+
+local function FailRequest(request, reason)
+    ClearRequest(request)
     local message = ("%s (%s)"):format(reason, request.name)
     if activeBatch == request.batch then
         Finish(message)
@@ -73,14 +80,111 @@ local function FailRequest(reason)
     end
 end
 
-local function CageNext(batch)
-    if activeBatch ~= batch or pending then
+local function Continue(batch)
+    C_Timer.After(batch.delay, function() CageNext(batch) end)
+end
+
+local function ConfirmCage(request)
+    ClearRequest(request)
+    local batch = request.batch
+    batch.caged = batch.caged + 1
+    if activeBatch == batch and not batch.single then
+        Continue(batch)
+    else
+        Message("Caged " .. request.name .. ".")
+        if activeBatch == batch then
+            activeBatch = nil
+        end
+    end
+end
+
+local function PetLeftJournal(id)
+    if not journal.IsJournalUnlocked() then
+        return false
+    end
+    for _, owned in ipairs(journal.GetOwnedPetIDs()) do
+        if owned == id then
+            return false
+        end
+    end
+    return true
+end
+
+local function RecoverRequest(request)
+    if PetLeftJournal(request.id) then
+        ConfirmCage(request)
+        return
+    end
+    local batch = request.batch
+    if activeBatch ~= batch then
+        ClearRequest(request)
+        return
+    end
+    if FreeBagSlots() == 0 then
+        ClearRequest(request)
+        Finish("Bags are full. Make room and start another batch.")
+        return
+    end
+    if batch.single then
+        FailRequest(request, "WoW did not confirm the cage.")
+        return
+    end
+    if request.attempts == MAX_ATTEMPTS then
+        ClearRequest(request)
+        rejected[request.id] = true
+        Message(("Skipping %s after %d cage attempts. Use /cagehaul retry to try it again later.")
+            :format(request.name, request.attempts))
+        Continue(batch)
         return
     end
 
+    -- Give WoW time to catch up and slow the rest of this batch after a stall.
+    if batch.delay == CAGE_DELAY then
+        Message("Waiting for WoW to respond. Slowing down and retrying automatically.")
+    end
+    batch.delay = math.min(1.5, batch.delay * 2)
+    request.timer:Cancel()
+    request.retrying = true
+    request.timer = C_Timer.NewTimer(2 ^ request.attempts, function()
+        if pending ~= request then
+            return
+        end
+        if PetLeftJournal(request.id) then
+            ConfirmCage(request)
+        elseif activeBatch ~= batch then
+            ClearRequest(request)
+        elseif PetBlocker(request.id) then
+            ClearRequest(request)
+            Continue(batch)
+        else
+            SendRequest(request)
+        end
+    end)
+end
+
+SendRequest = function(request)
     local blocker = ActionBlocker()
-    if blocker then
-        Finish(blocker)
+    if blocker or FreeBagSlots() == 0 then
+        pending = nil
+        Finish(blocker or "Bags are full. Make room and start another batch.")
+        return
+    end
+
+    request.attempts = request.attempts + 1
+    request.retrying = false
+    request.timer = C_Timer.NewTimer(CAGE_TIMEOUT, function()
+        if pending == request then
+            RecoverRequest(request)
+        end
+    end)
+    local ok = pcall(journal.CagePetByID, request.id)
+    if not ok and pending == request then
+        FailRequest(request, "WoW blocked the cage request. Try /cagehaul one for a single pet.")
+    end
+end
+
+CageNext = function(batch)
+    if activeBatch ~= batch or pending then
         return
     end
 
@@ -89,24 +193,9 @@ local function CageNext(batch)
         batch.index = batch.index + 1
         local info = journal.GetPetInfoTableByPetID(id)
         if info and not PetBlocker(id) then
-            -- Cap the batch at its starting space in case bag updates trail journal updates.
-            if batch.caged >= batch.limit or FreeBagSlots() == 0 then
-                Finish("Bag limit reached. Make room and start another batch.")
-                return
-            end
-
-            local request = { id = id, name = info.name or "Battle pet", batch = batch }
+            local request = { id = id, name = info.name or "Battle pet", batch = batch, attempts = 0 }
             pending = request
-            local ok = pcall(journal.CagePetByID, id)
-            if not ok and pending == request then
-                FailRequest("WoW blocked the cage request. Try /cagehaul one for a single pet.")
-            elseif pending == request then
-                C_Timer.After(CAGE_TIMEOUT, function()
-                    if pending == request then
-                        FailRequest("WoW did not confirm the cage. Check your bags before retrying.")
-                    end
-                end)
-            end
+            SendRequest(request)
             return
         end
     end
@@ -135,7 +224,7 @@ local function Start(single)
         return
     end
 
-    activeBatch = { queue = queue, index = 1, caged = 0, limit = slots, single = single }
+    activeBatch = { queue = queue, index = 1, caged = 0, delay = CAGE_DELAY, single = single }
     if not single then
         Message(("Starting batch of up to %d. Use /cagehaul stop to stop."):format(math.min(#queue, slots)))
     end
@@ -164,28 +253,18 @@ end
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PET_JOURNAL_PET_DELETED")
+events:RegisterEvent("PET_JOURNAL_LIST_UPDATE")
 events:RegisterEvent("PET_JOURNAL_CAGE_FAILED")
 events:SetScript("OnEvent", function(_, event, id)
     local request = pending
     if not request then
         return
     end
-    if event == "PET_JOURNAL_CAGE_FAILED" then
-        rejected[request.id] = true
-        FailRequest("WoW rejected the cage. This pet is skipped until /cagehaul retry.")
-    elseif id == request.id then
-        pending = nil
-        local batch = request.batch
-        batch.caged = batch.caged + 1
-        if activeBatch ~= batch or batch.single then
-            Message("Caged " .. request.name .. ".")
-            if activeBatch == batch then
-                activeBatch = nil
-            end
-        else
-            -- Advance only once the client's journal confirms the requested pet is gone.
-            C_Timer.After(CAGE_DELAY, function() CageNext(batch) end)
-        end
+    if (event == "PET_JOURNAL_PET_DELETED" and id == request.id)
+        or (event == "PET_JOURNAL_LIST_UPDATE" and PetLeftJournal(request.id)) then
+        ConfirmCage(request)
+    elseif event == "PET_JOURNAL_CAGE_FAILED" and not request.retrying then
+        RecoverRequest(request)
     end
 end)
 
