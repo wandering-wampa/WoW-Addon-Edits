@@ -40,6 +40,7 @@ local function CreatePanel()
     panel:SetMovable(true)
     panel:EnableMouse(true)
     ButtonFrameTemplate_HidePortrait(panel)
+    ButtonFrameTemplate_HideAttic(panel)
     ButtonFrameTemplate_HideButtonBar(panel)
     panel.CloseButton:SetScript("OnClick", function() addon.TogglePanel() end)
 

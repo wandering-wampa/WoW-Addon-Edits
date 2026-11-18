@@ -263,6 +263,10 @@ function CreateFrame(kind, name, parent, template)
     return frame
 end
 function ButtonFrameTemplate_HidePortrait(frame) assert(frame.template == "ButtonFrameTemplate") end
+function ButtonFrameTemplate_HideAttic(frame)
+    assert(frame.template == "ButtonFrameTemplate")
+    frame.insetStartsBelowTitle = true
+end
 function ButtonFrameTemplate_HideButtonBar(frame) assert(frame.template == "ButtonFrameTemplate") end
 function press(button)
     local handler = button.scripts
@@ -533,6 +537,7 @@ scenario(r'''
     local panel = CageHaulPanel
     local cage, deposit, retrieve, learn = unpack(panel.children)
     assert(panel:IsShown() and #panel.children == 4)
+    assert(panel.insetStartsBelowTitle, "Both button rows should sit inside the stock inset")
     assert(cage.label == "Cage Pets" and deposit.label == "Deposit"
         and retrieve.label == "Retrieve" and learn.label == "Learn")
     press(deposit)
