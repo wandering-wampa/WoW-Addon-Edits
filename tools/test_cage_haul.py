@@ -6,8 +6,11 @@ from lupa.lua51 import LuaRuntime
 
 
 ADDON = Path(__file__).resolve().parents[1] / "addons" / "CageHaul_Edit"
-SOURCE = (ADDON / "CageHaul.lua").read_text(encoding="utf-8")
-DEPOSIT = (ADDON / "GuildDeposit.lua").read_text(encoding="utf-8")
+SOURCES = [
+    (ADDON / line).read_text(encoding="utf-8")
+    for line in (ADDON / "CageHaul_Edit.toc").read_text(encoding="utf-8").splitlines()
+    if line.endswith(".lua")
+]
 BINDING = ElementTree.parse(ADDON / "Bindings.xml").find("Binding").text
 MOCK = r'''
 local now, timers, messages, owned, events = 0, {}, {}, {}, {}
@@ -18,7 +21,8 @@ C_Container = { GetContainerNumFreeSlots = function(bag)
     if bag == 0 then return freeSlots, 0 end
     return 30, 32 -- Specialty space does not hold cages.
 end }
-function InCombatLockdown() return false end
+function InCombatLockdown() return combat or false end
+function wipe(table) for key in pairs(table) do table[key] = nil end end
 C_PetBattles = { IsInBattle = function() return false end }
 function print(text) messages[#messages + 1] = text end
 function said(fragment)
@@ -109,7 +113,8 @@ withdrawalLimit, withdrawals = -1, {}
 Enum.TooltipDataType = { Item = 0, BattlePet = 6 }
 -- The live Guild Bank keeps its 98-slot limit local to Blizzard's addon.
 assert(MAX_GUILDBANK_SLOTS_PER_TAB == nil)
-GuildBankFrame = { mode = "bank", IsVisible = function() return bankVisible end }
+GuildBankFrame = { mode = "bank", IsVisible = function() return bankVisible end,
+    IsShown = function() return bankVisible end }
 function GetCurrentGuildBankTab() return tab end
 function GetNumGuildBankTabs() return #tabs end
 function GetGuildBankTabInfo(id) return "Tab " .. id, 1, true, allowed, withdrawalLimit, withdrawalLimit end
@@ -170,15 +175,98 @@ function AutoStoreGuildBankItem(id, slot)
 end
 '''
 
+UI_MOCK = r'''
+UIParent = {}
+local createEventFrame = CreateFrame
+local function noOp() end
+local function script(self, event, handler) self.scripts[event] = handler end
+function CreateFrame(kind, name, parent, template)
+    if kind == "Frame" and not parent then return createEventFrame(kind) end
+    local frame = { scripts = {}, template = template, SetScript = script, SetPoint = noOp }
+    if name then _G[name] = frame end
+    if kind == "Frame" and template == "ButtonFrameTemplate" then
+        assert(parent == UIParent)
+        frame.SetSize, frame.SetClampedToScreen, frame.SetFrameStrata = noOp, noOp, noOp
+        frame.SetMovable, frame.EnableMouse = noOp, noOp
+        frame.StartMoving, frame.StopMovingOrSizing = noOp, noOp
+        function frame:SetShown(shown) self.shown = shown end
+        function frame:IsShown() return self.shown end
+        function frame:Hide() self.shown = false end
+        frame.CloseButton = { scripts = {}, SetScript = script }
+        frame.TitleContainer = { TitleText = { SetText = noOp } }
+        frame.children = {}
+    elseif kind == "Frame" then
+        assert(template == nil and parent == CageHaulPanel)
+        frame.EnableMouse, frame.RegisterForDrag = noOp, noOp
+    elseif kind == "Button" then
+        assert(template == "UIPanelButtonTemplate" or template == "SecureActionButtonTemplate"
+            or template == "UIPanelButtonTemplate,SecureActionButtonTemplate")
+        function frame:SetText(label)
+            assert(self.template:find("UIPanelButtonTemplate", 1, true))
+            self.label = label
+        end
+        frame.SetSize = noOp
+        if parent == CageHaulPanel then table.insert(parent.children, frame) end
+        if template:find("SecureActionButtonTemplate", 1, true) then
+            frame.attributes = {}
+            function frame:RegisterForClicks(click) assert(click == "LeftButtonUp") end
+            function frame:SetAttribute(key, value)
+                assert(not InCombatLockdown())
+                self.attributes[key] = value
+            end
+        end
+    else
+        error("Unsupported widget")
+    end
+    return frame
+end
+function ButtonFrameTemplate_HidePortrait(frame) assert(frame.template == "ButtonFrameTemplate") end
+function ButtonFrameTemplate_HideButtonBar(frame) assert(frame.template == "ButtonFrameTemplate") end
+function press(button)
+    local handler = button.scripts
+    if handler.PreClick then handler.PreClick(button) end
+    if button.attributes and button.attributes.type == "item" then
+        assert(not combat)
+        local bag, slot = button.attributes.item:match("^(%d+) (%d+)$")
+        assert(tonumber(bag) == 0)
+        learnFromSlot(tonumber(slot))
+    elseif handler.OnClick then
+        handler.OnClick(button)
+    end
+    if handler.PostClick then handler.PostClick(button) end
+end
+'''
 
-def scenario(lua_code, bank=False):
+LEARN_MOCK = r'''
+Enum.PlayerInteractionType = { GuildBanker = 10, Merchant = 5 }
+C_PlayerInteractionManager = { IsInteractingWithNpcOfType = function(kind) return interaction == kind end }
+ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end }
+C_Item = { GetItemGUID = function(location)
+    local item = C_Container.GetContainerItemInfo(location.bag, location.slot)
+    return item and item.guid
+end }
+TooltipUtil = { SurfaceArgs = function(data) data.battlePetSpeciesID = data.species end }
+function C_TooltipInfo.GetBagItem(_, slot) return bags[slot].tooltip end
+function C_PetJournal.GetNumCollectedInfo(species) return species == 20 and 3 or 0, 3 end
+learnedSlots = {}
+function learnFromSlot(slot)
+    learnedSlots[#learnedSlots + 1] = slot
+    if not bags[slot].reject then bags[slot] = nil end
+end
+'''
+
+
+def scenario(lua_code, bank=False, learn=False):
     lua = LuaRuntime()
     lua.execute(MOCK)
     if bank:
         lua.execute(BANK_MOCK)
+    lua.execute(UI_MOCK)
+    if learn:
+        lua.execute(LEARN_MOCK)
     namespace = lua.table()
-    lua.execute(SOURCE, "CageHaul_Edit", namespace)
-    lua.execute(DEPOSIT, "CageHaul_Edit", namespace)
+    for source in SOURCES:
+        lua.execute(source, "CageHaul_Edit", namespace)
     lua.execute("function pressKey() " + BINDING + " end")
     lua.execute(lua_code)
 
@@ -341,3 +429,62 @@ scenario(r'''
 ''', bank=True)
 
 print("PASS: guild withdrawals recognize cage formats and honor bag space, withdrawal limits, and manual stop")
+
+scenario(r'''
+    assert(not CageHaulPanel, "The panel should start closed")
+    slash("")
+    local panel = CageHaulPanel
+    local cage, deposit, retrieve, learn = unpack(panel.children)
+    assert(panel:IsShown() and #panel.children == 4)
+    assert(cage.label == "Cage Pets" and deposit.label == "Deposit"
+        and retrieve.label == "Retrieve" and learn.label == "Learn")
+    press(deposit)
+    assert(deposit.label == "Stop Deposit")
+    press(deposit)
+    assert(deposit.label == "Deposit")
+    press(retrieve)
+    assert(retrieve.label == "Stop Retrieval")
+    press(retrieve)
+    assert(retrieve.label == "Retrieve")
+    populate(2)
+    press(cage)
+    assert(cage.label == "Stop Caging" and #calls == 1)
+    press(cage)
+    assert(cage.label == "Cage Pets")
+    fire("PET_JOURNAL_PET_DELETED", 1)
+    press(panel.CloseButton)
+    assert(not panel:IsShown())
+    slash("panel")
+    assert(panel:IsShown())
+''', bank=True)
+
+scenario(r'''
+    bags[1] = { itemID = 123, guid = "ordinary" }
+    bags[2] = { itemID = 82800, guid = "capped", tooltip = { type = Enum.TooltipDataType.BattlePet, species = 20 } }
+    bags[3] = { hyperlink = "|Hbattlepet:21:1:0|h[Pet]|h", guid = "reject", reject = true }
+    bags[4] = { itemID = 82800, guid = "learnable" }
+    bags[5] = { itemID = 82800, guid = "macro" }
+    slash("")
+    local learn = CageHaulPanel.children[4]
+    press(learn)
+    assert(#learnedSlots == 0 and said("Close the bank"))
+    bankVisible, combat = false, true
+    press(learn)
+    assert(#learnedSlots == 0)
+    combat, interaction = false, Enum.PlayerInteractionType.Merchant
+    press(learn)
+    assert(#learnedSlots == 0)
+    interaction = nil
+    press(learn)
+    press(learn)
+    assert(#learnedSlots == 1 and learnedSlots[1] == 3)
+    advance(3)
+    press(learn)
+    assert(#learnedSlots == 2 and learnedSlots[2] == 4 and not bags[4])
+    assert(not learn.attributes.item and not learn.attributes.type)
+    slash("panel")
+    press(CageHaulLearnButton)
+    assert(#learnedSlots == 3 and learnedSlots[3] == 5 and bags[1] and bags[2] and not bags[5])
+''', bank=True, learn=True)
+
+print("PASS: the Retail panel opens on command and its four buttons exercise the real addon callbacks")

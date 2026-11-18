@@ -26,6 +26,13 @@ function addon.FreeBagSlots()
 end
 local FreeBagSlots = addon.FreeBagSlots
 
+function addon.GetCageLinkInfo(link)
+    if not link then return false end
+    local data = link:match("|H([^|]+)|h") or link
+    local species = tonumber(data:match("^battlepet:(%d+)"))
+    return species ~= nil or tonumber(data:match("^item:(%d+)")) == 82800, species
+end
+
 local function PetBlocker(id)
     if not journal.PetIsTradable(id) or journal.PetIsRevoked(id) or journal.PetIsLockedForConvert(id) then
         return "unavailable"
@@ -65,6 +72,7 @@ end
 local function Finish(reason)
     local batch = activeBatch
     activeBatch = nil
+    addon.RefreshPanel()
     Message(("%s Caged %d this batch."):format(reason, batch.caged))
 end
 
@@ -97,6 +105,7 @@ local function ConfirmCage(request)
         Message("Caged " .. request.name .. ".")
         if activeBatch == batch then
             activeBatch = nil
+            addon.RefreshPanel()
         end
     end
 end
@@ -210,8 +219,12 @@ function addon.CanStartBankTransfer()
     return not activeBatch and not pending
 end
 
+function addon.IsCaging()
+    return activeBatch ~= nil
+end
+
 local function Start(single)
-    if addon.IsBankTransferRunning() then
+    if addon.BankTransferMode() then
         Message("Stop the guild bank transfer before caging more pets.")
         return
     end
@@ -236,6 +249,7 @@ local function Start(single)
     end
 
     activeBatch = { queue = queue, index = 1, caged = 0, delay = CAGE_DELAY, single = single }
+    addon.RefreshPanel()
     if not single then
         Message(("Starting batch of up to %d. Use /cagehaul stop to stop."):format(math.min(#queue, slots)))
     end
@@ -258,6 +272,7 @@ local function Preview()
         :format(blocked.unavailable, blocked.slotted, blocked.injured, blocked.wrapped, blocked.rejected))
     Message("/cagehaul start to fill your bags, /cagehaul stop to stop, or /cagehaul one for one pet.")
     Message("/cagehaul deposit or /cagehaul retrieve to move cages between your bags and the selected guild bank tab.")
+    Message("/cagehaul learn for the macro that learns one eligible cage per press.")
     if blocked.rejected > 0 then
         Message("/cagehaul retry clears the list of pets WoW rejected this session.")
     end
@@ -294,12 +309,16 @@ end
 SLASH_CAGEHAUL1 = "/cagehaul"
 SlashCmdList.CAGEHAUL = function(message)
     local command = message:match("^%s*(%S*)"):lower()
-    if command == "start" then
+    if command == "" or command == "panel" then
+        addon.TogglePanel()
+    elseif command == "start" then
         Start(false)
     elseif command == "stop" then
         if not addon.StopBankTransfer() then Stop() end
     elseif command == "deposit" or command == "retrieve" then
         addon.StartBankTransfer(command == "retrieve")
+    elseif command == "learn" then
+        addon.ShowLearnMacro()
     elseif command == "one" then
         Start(true)
     elseif command == "retry" then

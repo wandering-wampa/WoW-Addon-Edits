@@ -26,14 +26,9 @@ end
 
 local function Finish(run, reason)
     bankRun = nil
+    addon.RefreshPanel()
     local result = run.retrieving and "Retrieved %d %s from %s." or "Deposited %d %s into %s."
     Message(reason .. " " .. result:format(run.count, run.count == 1 and "cage" or "cages", run.tabName))
-end
-
-local function IsCageLink(link)
-    if not link then return false end
-    local data = link:match("|H([^|]+)|h") or link
-    return data:match("^battlepet:%d+") ~= nil or tonumber(data:match("^item:(%d+)")) == CAGE_ITEM_ID
 end
 
 local function ScanBagCages()
@@ -42,7 +37,7 @@ local function ScanBagCages()
     for bag = Enum.BagIndex.Backpack, Enum.BagIndex.Bag_4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and (info.itemID == CAGE_ITEM_ID or IsCageLink(info.hyperlink)) then
+            if info and (info.itemID == CAGE_ITEM_ID or addon.GetCageLinkInfo(info.hyperlink)) then
                 count = count + (info.stackCount or 1)
                 if not firstBag and not info.isLocked then
                     firstBag, firstSlot = bag, slot
@@ -72,7 +67,7 @@ local function FindBankCage(tab)
         local texture, count, locked = GetGuildBankItemInfo(tab, slot)
         if texture and count and count > 0 then
             local link = GetGuildBankItemLink(tab, slot)
-            local isCage = IsCageLink(link)
+            local isCage = addon.GetCageLinkInfo(link)
             if not link then
                 local data = C_TooltipInfo.GetGuildBankItem(tab, slot)
                 isCage = data and data.type == Enum.TooltipDataType.BattlePet
@@ -184,8 +179,10 @@ MoveNext = function(run)
     end
 end
 
-function addon.IsBankTransferRunning()
-    return bankRun ~= nil
+function addon.BankTransferMode()
+    if bankRun then
+        return bankRun.retrieving and "retrieve" or "deposit"
+    end
 end
 
 function addon.StartBankTransfer(retrieving)
@@ -215,6 +212,7 @@ function addon.StartBankTransfer(retrieving)
 
     local run = { tab = tab, tabName = tabName, count = 0, loading = true, retrieving = retrieving }
     bankRun = run
+    addon.RefreshPanel()
     local action = retrieving and "Retrieving caged pets from " or "Depositing caged pets into "
     Message(action .. tabName .. ". Use /cagehaul stop to stop.")
     QueryGuildBankTab(tab)
