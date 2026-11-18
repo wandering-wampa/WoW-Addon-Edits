@@ -12,7 +12,7 @@ To deposit, open the Blizzard guild bank, select the destination tab, and type `
 
 To withdraw, select the source tab in the guild bank and type `/cagehaul retrieve`. It moves pet cages into your normal bags until they're full, the tab is out of cages, or you reach your guild withdrawal limit. `/cagehaul stop` also stops withdrawals.
 
-Close the guild bank before learning. Each **Learn** click uses the next eligible cage in your bags. WoW requires one click per pet. For a macro, use `/click CageHaulLearnButton`. The addon skips cages at their species cap and moves past cages WoW doesn't learn. `/cagehaul learn` displays the macro command and resets skipped cages.
+Close the guild bank before learning. Each **Learn** click uses the next eligible cage in your bags. WoW requires one click per pet. For a macro, use `/click CageHaulLearnButton`. Clicks during the global or item cooldown do not consume a cage attempt. The addon skips cages at their species cap or after two unconfirmed attempts. `/cagehaul learn` displays the macro command and resets skipped cages.
 
 The scan covers your entire learned collection regardless of Pet Journal filters. WoW skips nontradable and otherwise unavailable pets. Heal injured pets, take pets out of their active battle slots and unwrap gifts before rerunning. Bags reserved for reagents or other specialized items do not count as space. If WoW misses or rejects a request, the batch checks the journal and retries eligible pets after a short pause. After three attempts it sets that pet aside for the session and continues with the rest. `/cagehaul retry` makes those pets eligible for another attempt.
 

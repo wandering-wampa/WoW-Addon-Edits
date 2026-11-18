@@ -1,9 +1,13 @@
 local _, addon = ...
 local Message = addon.Message
 local CAGE_ITEM_ID = 82800
+local GLOBAL_COOLDOWN_SPELL = 61304
+local LEARN_INTERVAL = 1.5
 local LEARN_TIMEOUT = 3
-local skipped = {}
+local MAX_ATTEMPTS = 2
+local unanswered = {}
 local pending
+local nextLearnAt = 0
 
 local interactionTypes = {
     "Banker", "GuildBanker", "AccountBanker", "Merchant", "Vendor",
@@ -52,7 +56,7 @@ local function FindLearnableCage()
                         end
                     end
                     local key = CageKey(bag, slot, info)
-                    if not skipped[key] and not IsSpeciesFull(species) then
+                    if (unanswered[key] or 0) < MAX_ATTEMPTS and not IsSpeciesFull(species) then
                         return bag, slot, key
                     end
                 end
@@ -61,16 +65,33 @@ local function FindLearnableCage()
     end
 end
 
-local function LearnRequestSettled()
+local function LearnRequestSettled(now)
     if not pending then return true end
     local info = C_Container.GetContainerItemInfo(pending.bag, pending.slot)
     if info and CageKey(pending.bag, pending.slot, info) == pending.key then
-        if GetTime() < pending.deadline then return false end
-        skipped[pending.key] = true
-        Message("WoW didn't learn that cage. Skipping it for this pass.")
+        if now < pending.deadline then return false end
+        local count = (unanswered[pending.key] or 0) + 1
+        unanswered[pending.key] = count
+        if count >= MAX_ATTEMPTS then
+            Message("WoW didn't learn that cage after two attempts. Skipping it for this pass.")
+        end
+    else
+        unanswered[pending.key] = nil
     end
     pending = nil
     return true
+end
+
+local function GlobalCooldownActive(now)
+    if now < nextLearnAt or UnitCastingInfo("player") or UnitChannelInfo("player") then return true end
+    local gcd = C_Spell.GetSpellCooldown(GLOBAL_COOLDOWN_SPELL)
+    return gcd and gcd.isActive
+end
+
+local function ItemCooldownActive(bag, slot, now)
+    local start, duration = C_Container.GetContainerItemCooldown(bag, slot)
+    if issecretvalue and (issecretvalue(start) or issecretvalue(duration)) then return true end
+    return duration > 0 and start + duration > now
 end
 
 -- The player supplies a click. Set the secure item action for that click only.
@@ -90,14 +111,19 @@ local function PrepareClick(self)
         Message("The Pet Journal must be writable and out of battle to learn cages.")
         return
     end
-    if not LearnRequestSettled() then return end
+    local now = GetTime()
+    if GlobalCooldownActive(now) or not LearnRequestSettled(now) then return end
 
     local bag, slot, key = FindLearnableCage()
     if not bag then
         Message("No eligible cages left. /cagehaul learn resets skipped cages.")
         return
     end
-    pending = { bag = bag, slot = slot, key = key, deadline = GetTime() + LEARN_TIMEOUT }
+    if ItemCooldownActive(bag, slot, now) then return end
+
+    pending = { bag = bag, slot = slot, key = key, deadline = now + LEARN_TIMEOUT }
+    -- The server's GCD can take a frame to appear after a click.
+    nextLearnAt = now + LEARN_INTERVAL
     self:SetAttribute("item", bag .. " " .. slot)
     self:SetAttribute("type", "item")
 end
@@ -121,6 +147,6 @@ end
 addon.CreateLearnButton(UIParent, "CageHaulLearnButton", "SecureActionButtonTemplate")
 
 function addon.ShowLearnMacro()
-    wipe(skipped)
+    wipe(unanswered)
     Message("Close the bank, then use Learn in /cagehaul or put /click CageHaulLearnButton in a macro. One pet per press.")
 end

@@ -277,10 +277,24 @@ end }
 TooltipUtil = { SurfaceArgs = function(data) data.battlePetSpeciesID = data.species end }
 function C_TooltipInfo.GetBagItem(_, slot) return bags[slot].tooltip end
 function C_PetJournal.GetNumCollectedInfo(species) return species == 20 and 3 or 0, 3 end
+local gcdEnds = 0
+C_Spell = { GetSpellCooldown = function(spell)
+    assert(spell == 61304)
+    return { isActive = math.max(gcdEnds, externalGcdEnds or 0) > GetTime() }
+end }
+function C_Container.GetContainerItemCooldown(_, slot)
+    return 0, bags[slot].cooldownEnds or 0, 1
+end
+function UnitCastingInfo(unit) assert(unit == "player"); return casting end
+function UnitChannelInfo(unit) assert(unit == "player"); return channeling end
 learnedSlots = {}
 function learnFromSlot(slot)
     learnedSlots[#learnedSlots + 1] = slot
-    if not bags[slot].reject then bags[slot] = nil end
+    if not bags[slot].reject and not C_Spell.GetSpellCooldown(61304).isActive
+        and (bags[slot].cooldownEnds or 0) <= GetTime() then
+        bags[slot] = nil
+        gcdEnds = GetTime() + 1.5
+    end
 end
 '''
 
@@ -509,14 +523,48 @@ scenario(r'''
     assert(#learnedSlots == 1 and learnedSlots[1] == 3)
     advance(3)
     press(learn)
-    assert(#learnedSlots == 2 and learnedSlots[2] == 4 and not bags[4])
+    assert(#learnedSlots == 2 and learnedSlots[2] == 3 and bags[3])
+    advance(3)
+    press(learn)
+    assert(#learnedSlots == 3 and learnedSlots[3] == 4 and not bags[4])
     assert(not learn.attributes.item and not learn.attributes.type)
     slash("panel")
     press(CageHaulLearnButton)
-    assert(#learnedSlots == 3 and learnedSlots[3] == 5 and bags[1] and bags[2] and not bags[5])
+    assert(#learnedSlots == 3 and bags[5])
+    advance(1.5)
+    press(CageHaulLearnButton)
+    assert(#learnedSlots == 4 and learnedSlots[4] == 5 and bags[1] and bags[2] and not bags[5])
 ''', bank=True, learn=True)
 
 print("PASS: the Retail panel opens on command and its four buttons exercise the real addon callbacks")
+
+scenario(r'''
+    bankVisible = false
+    externalGcdEnds = 2
+    bags[1] = { itemID = 82800, guid = "first" }
+    bags[2] = { itemID = 82800, guid = "second", cooldownEnds = 5 }
+    bags[3] = { itemID = 82800, guid = "third" }
+    slash("")
+    local learn = CageHaulPanel.children[4]
+    for i = 1, 10 do press(learn); advance(0.1) end
+    assert(#learnedSlots == 0, "Clicks during an active GCD must not attempt to use a cage")
+    advance(1.1)
+    press(learn)
+    assert(#learnedSlots == 1 and not bags[1])
+    for i = 1, 25 do press(learn); advance(0.1) end
+    assert(#learnedSlots == 1 and bags[2], "A cooling-down item should remain next in line")
+    advance(0.5)
+    press(learn)
+    assert(#learnedSlots == 2 and not bags[2])
+    for i = 1, 10 do press(learn); advance(0.1) end
+    assert(#learnedSlots == 2 and bags[3])
+    advance(0.6)
+    press(learn)
+    assert(#learnedSlots == 3 and not bags[3])
+    assert(not said("Skipping it for this pass"))
+''', bank=True, learn=True)
+
+print("PASS: rapid Learn clicks wait for cooldowns and keep the next cage in the queue")
 
 scenario(r'''
     CageHaulSettings = { minimapAngle = 180 }
