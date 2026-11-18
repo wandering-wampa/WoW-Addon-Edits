@@ -1,0 +1,6 @@
+## Interface: 120105
+## Title: Cage Haul
+## Notes: Cage learned battle pets in batches, including the last copy of each species.
+## Version: 1.0.0
+
+CageHaul.lua

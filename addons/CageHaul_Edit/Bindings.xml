@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="CAGEHAUL_TOGGLE_BATCH" category="ADDONS" header="CAGEHAUL">
+        CageHaul_ToggleBatch();
+    </Binding>
+</Bindings>
