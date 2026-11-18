@@ -3,7 +3,7 @@
 Cages learned battle pets in batches for WoW Retail, Midnight 12.1.5 (US build 70961, November 17, 2026). All eligible copies are included, even the last copy of a species, favorites, named pets and leveled pets. The cages go into your bags.
 
 1. Extract `CageHaul_Edit` directly into `_retail_/Interface/AddOns` and start WoW.
-2. Type `/cagehaul` to open the compact panel with **Cage Pets**, **Deposit**, **Retrieve**, and **Learn**. `/cagehaul status` shows the eligible count, free bag slots, and reasons pets were skipped.
+2. Click the pet trap on the minimap or type `/cagehaul` to open or close the panel with **Cage Pets**, **Deposit**, **Retrieve**, and **Learn**. Drag the minimap button to move it around the rim. `/cagehaul status` shows the eligible count, free bag slots, and reasons pets were skipped.
 3. Click **Cage Pets** or type `/cagehaul start` once to cage a batch. When your bags fill, bank the cages and start another batch. Click the running batch's button again to stop it.
 
 You can also bind **Start or stop a pet cage batch** under **Options → Keybindings → AddOns → Cage Haul**. Press once to start and again to stop. `/cagehaul stop` stops the queue after any request already sent. `/cagehaul one` cages a single eligible pet.

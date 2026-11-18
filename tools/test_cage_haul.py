@@ -177,6 +177,20 @@ end
 
 UI_MOCK = r'''
 UIParent = {}
+Minimap = {
+    scripts = {},
+    GetWidth = function(self) return self.width or 198 end,
+    GetHeight = function() return 198 end,
+    GetFrameLevel = function() return 10 end,
+    GetCenter = function() return 100, 100 end,
+    GetEffectiveScale = function() return 2 end,
+    HookScript = function(self, event, handler)
+        assert(event == "OnSizeChanged")
+        self.scripts[event] = handler
+    end,
+}
+function GetCursorPosition() return 200, 400 end
+GameTooltip = { Hide = function() end }
 local createEventFrame = CreateFrame
 local function noOp() end
 local function script(self, event, handler) self.scripts[event] = handler end
@@ -198,6 +212,21 @@ function CreateFrame(kind, name, parent, template)
     elseif kind == "Frame" then
         assert(template == nil and parent == CageHaulPanel)
         frame.EnableMouse, frame.RegisterForDrag = noOp, noOp
+    elseif kind == "Button" and parent == Minimap then
+        assert(template == nil and name == "CageHaulMinimapButton")
+        frame.SetSize, frame.SetFrameLevel, frame.SetToplevel = noOp, noOp, noOp
+        frame.SetHighlightTexture, frame.LockHighlight, frame.UnlockHighlight = noOp, noOp, noOp
+        frame.ClearAllPoints = noOp
+        function frame:RegisterForClicks(click) assert(click == "LeftButtonUp") end
+        function frame:RegisterForDrag(button) assert(button == "LeftButton") end
+        function frame:SetPoint(point, parent, anchor, x, y)
+            assert(point == "CENTER" and parent == Minimap and anchor == "CENTER")
+            self.x, self.y = x, y
+        end
+        function frame:CreateTexture(_, layer)
+            assert(layer == "BACKGROUND" or layer == "ARTWORK" or layer == "OVERLAY")
+            return { SetSize = noOp, SetPoint = noOp, SetTexture = noOp }
+        end
     elseif kind == "Button" then
         assert(template == "UIPanelButtonTemplate" or template == "SecureActionButtonTemplate"
             or template == "UIPanelButtonTemplate,SecureActionButtonTemplate")
@@ -488,3 +517,25 @@ scenario(r'''
 ''', bank=True, learn=True)
 
 print("PASS: the Retail panel opens on command and its four buttons exercise the real addon callbacks")
+
+scenario(r'''
+    CageHaulSettings = { minimapAngle = 180 }
+    fire("PLAYER_LOGIN")
+    local button = CageHaulMinimapButton
+    assert(button and not CageHaulPanel)
+    assert(math.abs(button.x + 102) < 0.001 and math.abs(button.y) < 0.001)
+    Minimap.width = 220
+    Minimap.scripts.OnSizeChanged()
+    assert(math.abs(button.x + 113) < 0.001)
+    press(button)
+    assert(CageHaulPanel:IsShown())
+    press(button)
+    assert(not CageHaulPanel:IsShown())
+    button.scripts.OnDragStart(button)
+    button.scripts.OnUpdate(button)
+    button.scripts.OnDragStop(button)
+    assert(CageHaulSettings.minimapAngle == 90 and math.abs(button.y - 102) < 0.001)
+    assert(not button.scripts.OnUpdate)
+''')
+
+print("PASS: minimap launcher initializes at login, toggles the panel, and saves scaled drag positioning")
