@@ -12,7 +12,7 @@ To deposit, open the Blizzard guild bank, select the destination tab, and type `
 
 To withdraw, select the source tab in the guild bank and type `/cagehaul retrieve`. It moves pet cages into your normal bags until they're full, the tab is out of cages, or you reach your guild withdrawal limit. `/cagehaul stop` also stops withdrawals.
 
-Open **Esc → Options → AddOns → Cage Haul** or type `/cagehaul settings` to choose a preset and turn the minimap button on or off. The setting takes effect immediately. `/cagehaul` still opens the window with the button hidden.
+Choose a preset from the dropdown above the four action buttons. The change applies to the next batch. Open **Esc → Options → AddOns → Cage Haul** or use `/cagehaul settings` for preset details and the minimap toggle. The minimap toggle takes effect immediately. `/cagehaul` still opens the window with the button hidden.
 
 | Preset | Behavior |
 | --- | --- |

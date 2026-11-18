@@ -1,5 +1,6 @@
 local _, addon = ...
 local category
+local SETTING_PREFIX = "CAGEHAUL_"
 
 local function RegisterSettings()
     if category then return end
@@ -9,7 +10,7 @@ local function RegisterSettings()
     category, layout = Settings.RegisterVerticalLayoutCategory("Cage Haul")
 
     local function Setting(key, label)
-        return Settings.RegisterAddOnSetting(category, "CAGEHAUL_" .. key, key, db, type(defaults[key]), label, defaults[key])
+        return Settings.RegisterAddOnSetting(category, SETTING_PREFIX .. key, key, db, type(defaults[key]), label, defaults[key])
     end
 
     local minimap = Setting("showMinimap", "Show minimap button")
@@ -44,6 +45,11 @@ local function RegisterSettings()
         "After missing species and selected upgrades, retrieve learnable extras up to the species cap. Cages already in your bags count toward it.")
 
     Settings.RegisterAddOnCategory(category)
+end
+
+function addon.SetPreset(preset)
+    RegisterSettings()
+    Settings.SetValue(SETTING_PREFIX .. "preset", preset)
 end
 
 function addon.OpenSettings()

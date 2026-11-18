@@ -4,7 +4,7 @@ local panel
 function addon.RefreshPanel()
     if not panel then return end
     local mode = addon.BankTransferMode()
-    panel.TitleContainer.TitleText:SetText("Cage Haul: " .. addon.PresetNames[addon.GetSettings().preset])
+    panel.Preset:OverrideText(addon.PresetNames[addon.GetSettings().preset])
     panel.Cage:SetText(addon.IsCaging() and "Stop Caging" or "Cage Pets")
     panel.Deposit:SetText(mode == "deposit" and "Stop Deposit" or "Deposit")
     panel.Retrieve:SetText(mode == "retrieve" and "Stop Retrieval" or "Retrieve")
@@ -30,10 +30,23 @@ local function AddButton(callback, x, y)
     return PlaceButton(button, x, y)
 end
 
+local function CreatePresetDropdown()
+    local dropdown = CreateFrame("DropdownButton", nil, panel, "WowStyle1DropdownTemplate")
+    dropdown:SetWidth(142)
+    dropdown:SetPoint("TOP", panel, "TOP", 0, -29)
+    dropdown:SetupMenu(function(_, menu)
+        local function IsSelected(preset) return addon.GetSettings().preset == preset end
+        for _, preset in ipairs({ "full", "extras", "fill" }) do
+            menu:CreateRadio(addon.PresetNames[preset], IsSelected, addon.SetPreset, preset)
+        end
+    end)
+    return dropdown
+end
+
 local function CreatePanel()
     panel = CreateFrame("Frame", "CageHaulPanel", UIParent, "ButtonFrameTemplate")
     panel:Hide()
-    panel:SetSize(252, 106)
+    panel:SetSize(252, 136)
     panel:SetPoint("CENTER", UIParent, "CENTER")
     panel:SetClampedToScreen(true)
     panel:SetFrameStrata("DIALOG")
@@ -42,6 +55,7 @@ local function CreatePanel()
     ButtonFrameTemplate_HidePortrait(panel)
     ButtonFrameTemplate_HideAttic(panel)
     ButtonFrameTemplate_HideButtonBar(panel)
+    panel.TitleContainer.TitleText:SetText("Cage Haul")
     panel.CloseButton:SetScript("OnClick", function() addon.TogglePanel() end)
 
     local titleDrag = CreateFrame("Frame", nil, panel)
@@ -54,11 +68,12 @@ local function CreatePanel()
     end)
     titleDrag:SetScript("OnDragStop", function() panel:StopMovingOrSizing() end)
 
-    panel.Cage = AddButton(CageHaul_ToggleBatch, 13, -31)
-    panel.Deposit = AddButton(function() ToggleBankTransfer("deposit") end, 131, -31)
-    panel.Retrieve = AddButton(function() ToggleBankTransfer("retrieve") end, 13, -63)
+    panel.Preset = CreatePresetDropdown()
+    panel.Cage = AddButton(CageHaul_ToggleBatch, 13, -61)
+    panel.Deposit = AddButton(function() ToggleBankTransfer("deposit") end, 131, -61)
+    panel.Retrieve = AddButton(function() ToggleBankTransfer("retrieve") end, 13, -93)
     local learn = addon.CreateLearnButton(panel, nil, "UIPanelButtonTemplate,SecureActionButtonTemplate")
-    PlaceButton(learn, 131, -63)
+    PlaceButton(learn, 131, -93)
     learn:SetText("Learn")
     learn.tooltipText = "Learn the next eligible cage. One pet per click."
 end

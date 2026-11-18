@@ -224,6 +224,20 @@ function CreateFrame(kind, name, parent, template)
     elseif kind == "Frame" then
         assert(template == nil and parent == CageHaulPanel)
         frame.EnableMouse, frame.RegisterForDrag = noOp, noOp
+    elseif kind == "DropdownButton" then
+        assert(template == "WowStyle1DropdownTemplate" and parent == CageHaulPanel)
+        frame.SetWidth = noOp
+        function frame:OverrideText(label) self.label = label end
+        function frame:SetupMenu(generator) self.generator = generator end
+        function frame:OpenMenu()
+            local radios = {}
+            local menu = {}
+            function menu:CreateRadio(label, selected, select, value)
+                radios[#radios + 1] = { label = label, selected = selected, select = select, value = value }
+            end
+            self.generator(self, menu)
+            return radios
+        end
     elseif kind == "Button" and parent == Minimap then
         assert(template == nil and name == "CageHaulMinimapButton")
         frame.SetSize, frame.SetFrameLevel, frame.SetToplevel = noOp, noOp, noOp
@@ -321,6 +335,10 @@ end
 function CreateSettingsListSectionHeaderInitializer(label) return label end
 function Settings.RegisterAddOnCategory(parent) assert(parent == category); registeredSettings = true end
 function Settings.OpenToCategory(id) assert(registeredSettings and id == 123); settingsOpened = true end
+function Settings.SetValue(variable, value)
+    local key = assert(variable:match("^CAGEHAUL_(.+)$"))
+    settingsControls[key]:SetValue(value)
+end
 '''
 
 LEARN_MOCK = r'''
@@ -657,7 +675,12 @@ scenario(r'''
     assert(CageHaulMinimapButton.shown and CageHaulSettings.minimapAngle == 195)
     press(CageHaulMinimapButton)
     settingsControls.preset:SetValue("fill")
-    assert(CageHaulPanel.TitleContainer.TitleText.text == "Cage Haul: Fill Collection")
+    assert(CageHaulPanel.TitleContainer.TitleText.text == "Cage Haul")
+    assert(CageHaulPanel.Preset.label == "Fill Collection")
+    local menu = CageHaulPanel.Preset:OpenMenu()
+    assert(#menu == 3 and menu[3].selected(menu[3].value))
+    menu[2].select(menu[2].value)
+    assert(CageHaulSettings.preset == "extras" and CageHaulPanel.Preset.label == "Cage Extras")
     settingsControls.showMinimap:SetValue(false)
     assert(not CageHaulMinimapButton.shown)
     slash("")
@@ -732,3 +755,24 @@ scenario(r'''
 ''', bank=True)
 
 print("PASS: native settings, saved minimap toggle, Cage Extras protections, and Fill Collection priority and limits")
+
+scenario(r'''
+    populate(2)
+    petData[1] = { speciesID = 10, petLevel = 1, rarity = 2 }
+    petData[2] = { speciesID = 10, petLevel = 2, rarity = 2 }
+    slash("")
+    local panel = CageHaulPanel
+    local menu = panel.Preset:OpenMenu()
+    menu[2].select(menu[2].value)
+    press(panel.Cage)
+    assert(#calls == 1 and calls[1] == 1)
+    menu[1].select(menu[1].value)
+    assert(panel.Preset.label == "Full Swap")
+    cage(1, "PET_JOURNAL_PET_DELETED")
+    advance(0.5)
+    assert(#calls == 1, "A preset selection must not change the current batch")
+    press(panel.Cage)
+    assert(#calls == 2 and calls[2] == 2, "The next batch should use the new preset")
+''')
+
+print("PASS: the panel dropdown and AddOns settings share a preset and changes apply to the next batch")
