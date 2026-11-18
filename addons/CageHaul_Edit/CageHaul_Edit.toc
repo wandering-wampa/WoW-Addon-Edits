@@ -1,7 +1,7 @@
 ## Interface: 120105
 ## Title: Cage Haul
-## Notes: Cage learned battle pets in batches and deposit cages into a selected guild bank tab.
-## Version: 1.1.1
+## Notes: Cage learned battle pets in batches and move cages between your bags and a selected guild bank tab.
+## Version: 1.2.0
 
 CageHaul.lua
 GuildDeposit.lua

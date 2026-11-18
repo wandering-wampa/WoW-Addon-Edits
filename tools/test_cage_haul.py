@@ -105,22 +105,28 @@ BANK_MOCK = r'''
 local cursor, source
 tab, bankVisible, allowed, bankMoves = 1, true, true, {}
 bags, tabs = {}, { {}, {} }
+withdrawalLimit, withdrawals = -1, {}
+Enum.TooltipDataType = { Item = 0, BattlePet = 6 }
 -- The live Guild Bank keeps its 98-slot limit local to Blizzard's addon.
 assert(MAX_GUILDBANK_SLOTS_PER_TAB == nil)
 GuildBankFrame = { mode = "bank", IsVisible = function() return bankVisible end }
 function GetCurrentGuildBankTab() return tab end
 function GetNumGuildBankTabs() return #tabs end
-function GetGuildBankTabInfo(id) return "Tab " .. id, 1, true, allowed end
+function GetGuildBankTabInfo(id) return "Tab " .. id, 1, true, allowed, withdrawalLimit, withdrawalLimit end
 function QueryGuildBankTab(id) assert(id == tab) end
 function GetGuildBankItemInfo(id, slot)
     assert(slot >= 1 and slot <= 98, "Only valid guild bank slots should be scanned")
     local item = tabs[id][slot]
-    if item then return 123, 1, false end
+    if item then return 123, 1, item.isLocked end
 end
 function GetGuildBankItemLink(id, slot)
     local item = tabs[id][slot]
     if item and item.hyperlink then return item.hyperlink end
 end
+C_TooltipInfo = { GetGuildBankItem = function(id, slot)
+    local item = tabs[id][slot]
+    return item and item.tooltip
+end }
 function GetCursorInfo() return cursor and "item" end
 function ClearCursor() cursor, source = nil, nil end
 function C_Container.GetContainerNumSlots(bag) return bag == 0 and 5 or 0 end
@@ -144,6 +150,23 @@ function PickupGuildBankItem(id, slot)
             fire("GUILDBANKBAGSLOTS_CHANGED")
         end)
     end
+end
+function AutoStoreGuildBankItem(id, slot)
+    assert(id == tab and freeSlots > 0 and withdrawalLimit ~= 0)
+    local item = assert(tabs[id][slot])
+    assert(not item.isLocked)
+    table.insert(withdrawals, { id, slot })
+    C_Timer.After(0.5, function()
+        for bagSlot = 1, 5 do
+            if not bags[bagSlot] then
+                bags[bagSlot], tabs[id][slot] = item, nil
+                freeSlots = freeSlots - 1
+                if withdrawalLimit > 0 then withdrawalLimit = withdrawalLimit - 1 end
+                return
+            end
+        end
+        error("No bag space in the mock")
+    end)
 end
 '''
 
@@ -275,3 +298,46 @@ scenario(r'''
 ''', bank=True)
 
 print("PASS: guild deposits only move cages into empty slots on the selected tab and verify each transfer")
+
+scenario(r'''
+    local other = { itemID = 123, hyperlink = "|Hitem:123:0|h[Other]|h" }
+    local cage = { itemID = 82800, hyperlink = "|Hitem:82800:0|h[Pet Cage]|h" }
+    local linkedCage = { hyperlink = "|Hbattlepet:1:2:3|h[Pet]|h" }
+    local tooltipCage = { itemID = 82800, tooltip = { type = Enum.TooltipDataType.BattlePet } }
+    tabs[1][1], tabs[2][1] = cage, other
+    tabs[2][96], tabs[2][97], tabs[2][98] = cage, linkedCage, tooltipCage
+    tab, freeSlots, allowed = 2, 2, false -- View and withdraw without deposit rights.
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(0.4)
+    assert(#withdrawals == 1 and withdrawals[1][2] == 96)
+    advance(3)
+    assert(#withdrawals == 2 and freeSlots == 0 and said("normal bags are full"))
+    assert(said("Retrieved 2 cages from Tab 2") and tabs[1][1] == cage and tabs[2][1] == other)
+    assert(bags[1] == cage and bags[2] == linkedCage and tabs[2][98] == tooltipCage)
+
+    freeSlots = 2
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(3)
+    assert(#withdrawals == 3 and bags[3] == tooltipCage and said("No caged pets left"))
+''', bank=True)
+
+scenario(r'''
+    local cage = { itemID = 82800, hyperlink = "item:82800" }
+    tabs[1][1], tabs[1][2] = cage, cage
+    freeSlots, withdrawalLimit = 2, 1
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    advance(3)
+    assert(#withdrawals == 1 and said("No withdrawals available") and said("Retrieved 1 cage"))
+    assert(tabs[1][2] == cage)
+    withdrawalLimit = -1
+    slash("retrieve")
+    fire("GUILDBANKBAGSLOTS_CHANGED")
+    slash("stop")
+    advance(3)
+    assert(#withdrawals == 1 and tabs[1][2] == cage)
+''', bank=True)
+
+print("PASS: guild withdrawals recognize cage formats and honor bag space, withdrawal limits, and manual stop")

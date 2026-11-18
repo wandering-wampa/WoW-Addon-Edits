@@ -4,8 +4,8 @@ local CAGE_ITEM_ID = 82800
 -- Matches the private slot count in Retail's Blizzard_GuildBankUI.
 local GUILD_BANK_SLOTS_PER_TAB = 98
 local TRANSFER_TIMEOUT = 8
-local deposit
-local DepositNext
+local bankRun
+local MoveNext
 
 local function GetOpenTab()
     if GuildBankFrame and GuildBankFrame:IsVisible() and GuildBankFrame.mode == "bank" then
@@ -16,39 +16,41 @@ local function GetOpenTab()
     end
 end
 
-local function DepositBlocker(tab)
+local function ContextBlocker(tab)
     if InCombatLockdown() then
-        return "Leave combat before depositing cages."
+        return "Leave combat before moving cages."
     elseif GetOpenTab() ~= tab then
         return "The selected guild bank tab changed or closed."
-    end
-    local _, _, canView, canDeposit = GetGuildBankTabInfo(tab)
-    if not canView or not canDeposit then
-        return "You need permission to view and deposit into this guild bank tab."
     end
 end
 
 local function Finish(run, reason)
-    deposit = nil
-    Message(("%s Deposited %d %s into %s."):format(reason, run.count,
-        run.count == 1 and "cage" or "cages", run.tabName))
+    bankRun = nil
+    local result = run.retrieving and "Retrieved %d %s from %s." or "Deposited %d %s into %s."
+    Message(reason .. " " .. result:format(run.count, run.count == 1 and "cage" or "cages", run.tabName))
 end
 
-local function FindCage()
-    local lockedCage
+local function IsCageLink(link)
+    if not link then return false end
+    local data = link:match("|H([^|]+)|h") or link
+    return data:match("^battlepet:%d+") ~= nil or tonumber(data:match("^item:(%d+)")) == CAGE_ITEM_ID
+end
+
+local function ScanBagCages()
+    local firstBag, firstSlot
+    local count = 0
     for bag = Enum.BagIndex.Backpack, Enum.BagIndex.Bag_4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and (info.itemID == CAGE_ITEM_ID
-                or (info.hyperlink and info.hyperlink:find("|Hbattlepet:", 1, true))) then
-                if not info.isLocked then
-                    return bag, slot
+            if info and (info.itemID == CAGE_ITEM_ID or IsCageLink(info.hyperlink)) then
+                count = count + (info.stackCount or 1)
+                if not firstBag and not info.isLocked then
+                    firstBag, firstSlot = bag, slot
                 end
-                lockedCage = true
             end
         end
     end
-    return nil, nil, lockedCage
+    return firstBag, firstSlot, count
 end
 
 local function IsEmptySlot(tab, slot)
@@ -64,39 +66,50 @@ local function FindEmptySlot(tab)
     end
 end
 
-local function VerifyTransfer(run, bag, source, target, deadline)
-    if deposit ~= run then
+local function FindBankCage(tab)
+    local lockedCage
+    for slot = 1, GUILD_BANK_SLOTS_PER_TAB do
+        local texture, count, locked = GetGuildBankItemInfo(tab, slot)
+        if texture and count and count > 0 then
+            local link = GetGuildBankItemLink(tab, slot)
+            local isCage = IsCageLink(link)
+            if not link then
+                local data = C_TooltipInfo.GetGuildBankItem(tab, slot)
+                isCage = data and data.type == Enum.TooltipDataType.BattlePet
+            end
+            if isCage then
+                if not locked then return slot end
+                lockedCage = true
+            end
+        end
+    end
+    return nil, lockedCage
+end
+
+local function VerifyTransfer(run, Confirmed, deadline)
+    if bankRun ~= run then
         return
     end
-    local blocker = DepositBlocker(run.tab)
+    local blocker = ContextBlocker(run.tab)
     if blocker then
         Finish(run, blocker)
         return
     end
 
-    local texture, count, locked = GetGuildBankItemInfo(run.tab, target)
-    if texture and count and count > 0 and not locked and not C_Container.GetContainerItemInfo(bag, source) then
+    if Confirmed() then
         run.count = run.count + 1
-        C_Timer.After(0.35, function() DepositNext(run) end)
+        C_Timer.After(0.35, function() MoveNext(run) end)
     elseif GetTime() < deadline then
-        C_Timer.After(0.15, function() VerifyTransfer(run, bag, source, target, deadline) end)
+        C_Timer.After(0.15, function() VerifyTransfer(run, Confirmed, deadline) end)
     else
         Finish(run, "WoW did not confirm the last transfer. Check the selected tab before restarting.")
     end
 end
 
-DepositNext = function(run)
-    if deposit ~= run then
-        return
-    end
-    local blocker = DepositBlocker(run.tab)
-    if blocker or GetCursorInfo() then
-        Finish(run, blocker or "Clear what you're holding on the cursor before depositing.")
-        return
-    end
-    local bag, source, lockedCage = FindCage()
+local function DepositCage(run)
+    local bag, source, count = ScanBagCages()
     if not bag then
-        Finish(run, lockedCage and "Remaining cages are locked by WoW. Try again when they're ready."
+        Finish(run, count > 0 and "Remaining cages are locked by WoW. Try again when they're ready."
             or "No caged pets left in your bags.")
         return
     end
@@ -119,46 +132,102 @@ DepositNext = function(run)
         Finish(run, "WoW did not accept the cage in this tab.")
         return
     end
-    VerifyTransfer(run, bag, source, target, GetTime() + TRANSFER_TIMEOUT)
+    VerifyTransfer(run, function()
+        local texture, count, locked = GetGuildBankItemInfo(run.tab, target)
+        return texture and count and count > 0 and not locked and not C_Container.GetContainerItemInfo(bag, source)
+    end, GetTime() + TRANSFER_TIMEOUT)
 end
 
-function addon.IsDepositing()
-    return deposit ~= nil
-end
-
-function addon.StartDeposit()
-    if deposit then
-        Message("A guild bank deposit is already running. Use /cagehaul stop to stop.")
+local function RetrieveCage(run)
+    if addon.FreeBagSlots() == 0 then
+        Finish(run, "Your normal bags are full.")
         return
-    elseif not addon.CanStartDeposit() then
-        Message("Wait for the current cage request or batch to finish before depositing.")
+    end
+    local source, lockedCage = FindBankCage(run.tab)
+    if not source then
+        Finish(run, lockedCage and "Remaining cages are locked by WoW. Try again when they're ready."
+            or "No caged pets left in the selected tab.")
+        return
+    end
+    local _, _, before = ScanBagCages()
+    if not pcall(AutoStoreGuildBankItem, run.tab, source) then
+        Finish(run, "WoW blocked the cage withdrawal.")
+        return
+    end
+    VerifyTransfer(run, function()
+        if not IsEmptySlot(run.tab, source) then return false end
+        local _, _, current = ScanBagCages()
+        return current > before
+    end, GetTime() + TRANSFER_TIMEOUT)
+end
+
+MoveNext = function(run)
+    if bankRun ~= run then return end
+    local blocker = ContextBlocker(run.tab)
+    if blocker or GetCursorInfo() then
+        Finish(run, blocker or "Clear what you're holding on the cursor before moving cages.")
+        return
+    end
+    local _, _, canView, canDeposit, _, remaining = GetGuildBankTabInfo(run.tab)
+    if not canView then
+        Finish(run, "You need permission to view this guild bank tab.")
+    elseif run.retrieving then
+        if not remaining or remaining == 0 then
+            Finish(run, "No withdrawals available from this guild bank tab.")
+        else
+            RetrieveCage(run)
+        end
+    elseif not canDeposit then
+        Finish(run, "You need permission to deposit into this guild bank tab.")
+    else
+        DepositCage(run)
+    end
+end
+
+function addon.IsBankTransferRunning()
+    return bankRun ~= nil
+end
+
+function addon.StartBankTransfer(retrieving)
+    if bankRun then
+        Message("A guild bank transfer is already running. Use /cagehaul stop to stop.")
+        return
+    elseif not addon.CanStartBankTransfer() then
+        Message("Wait for the current cage request or batch to finish before moving cages.")
         return
     end
     local tab = GetOpenTab()
     if not tab then
-        Message("Open the guild bank and select the destination tab, then use /cagehaul deposit.")
+        Message("Open the guild bank and select a tab, then run the command again.")
         return
     end
-    local blocker = DepositBlocker(tab)
+    local blocker = ContextBlocker(tab)
     if blocker or GetCursorInfo() then
-        Message(blocker or "Clear what you're holding on the cursor before depositing.")
+        Message(blocker or "Clear what you're holding on the cursor before moving cages.")
+        return
+    end
+    local tabName, _, canView, canDeposit = GetGuildBankTabInfo(tab)
+    if not canView or (not retrieving and not canDeposit) then
+        Message(retrieving and "You need permission to view this guild bank tab."
+            or "You need permission to view and deposit into this guild bank tab.")
         return
     end
 
-    local run = { tab = tab, tabName = GetGuildBankTabInfo(tab), count = 0, loading = true }
-    deposit = run
-    Message(("Depositing caged pets into %s. Use /cagehaul stop to stop."):format(run.tabName))
+    local run = { tab = tab, tabName = tabName, count = 0, loading = true, retrieving = retrieving }
+    bankRun = run
+    local action = retrieving and "Retrieving caged pets from " or "Depositing caged pets into "
+    Message(action .. tabName .. ". Use /cagehaul stop to stop.")
     QueryGuildBankTab(tab)
     C_Timer.After(TRANSFER_TIMEOUT, function()
-        if deposit == run and run.loading then
+        if bankRun == run and run.loading then
             Finish(run, "WoW did not send the guild bank tab contents. Reopen the tab and try again.")
         end
     end)
 end
 
-function addon.StopDeposit()
-    if not deposit then return false end
-    Finish(deposit, "Stopped. Any transfer already sent may still finish.")
+function addon.StopBankTransfer()
+    if not bankRun then return false end
+    Finish(bankRun, "Stopped. Any transfer already sent may still finish.")
     return true
 end
 
@@ -166,12 +235,12 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("GUILDBANKBAGSLOTS_CHANGED")
 events:RegisterEvent("GUILDBANKFRAME_CLOSED")
 events:SetScript("OnEvent", function(_, event)
-    local run = deposit
+    local run = bankRun
     if not run then return end
     if event == "GUILDBANKFRAME_CLOSED" then
         Finish(run, "Guild bank closed.")
     elseif run.loading then
         run.loading = false
-        C_Timer.After(0, function() DepositNext(run) end)
+        C_Timer.After(0, function() MoveNext(run) end)
     end
 end)

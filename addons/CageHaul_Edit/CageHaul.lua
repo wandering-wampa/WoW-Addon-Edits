@@ -14,7 +14,7 @@ function addon.Message(text)
 end
 local Message = addon.Message
 
-local function FreeBagSlots()
+function addon.FreeBagSlots()
     local total = 0
     for bag = Enum.BagIndex.Backpack, Enum.BagIndex.Bag_4 do
         local slots, family = C_Container.GetContainerNumFreeSlots(bag)
@@ -24,6 +24,7 @@ local function FreeBagSlots()
     end
     return total
 end
+local FreeBagSlots = addon.FreeBagSlots
 
 local function PetBlocker(id)
     if not journal.PetIsTradable(id) or journal.PetIsRevoked(id) or journal.PetIsLockedForConvert(id) then
@@ -205,13 +206,13 @@ CageNext = function(batch)
     Finish("Batch complete.")
 end
 
-function addon.CanStartDeposit()
+function addon.CanStartBankTransfer()
     return not activeBatch and not pending
 end
 
 local function Start(single)
-    if addon.IsDepositing() then
-        Message("Stop the guild bank deposit before caging more pets.")
+    if addon.IsBankTransferRunning() then
+        Message("Stop the guild bank transfer before caging more pets.")
         return
     end
     if activeBatch or pending then
@@ -256,7 +257,7 @@ local function Preview()
     Message(("Skipped: %d unavailable, %d slotted, %d injured, %d to unwrap, %d rejected.")
         :format(blocked.unavailable, blocked.slotted, blocked.injured, blocked.wrapped, blocked.rejected))
     Message("/cagehaul start to fill your bags, /cagehaul stop to stop, or /cagehaul one for one pet.")
-    Message("/cagehaul deposit to fill the selected guild bank tab with caged pets.")
+    Message("/cagehaul deposit or /cagehaul retrieve to move cages between your bags and the selected guild bank tab.")
     if blocked.rejected > 0 then
         Message("/cagehaul retry clears the list of pets WoW rejected this session.")
     end
@@ -296,9 +297,9 @@ SlashCmdList.CAGEHAUL = function(message)
     if command == "start" then
         Start(false)
     elseif command == "stop" then
-        if not addon.StopDeposit() then Stop() end
-    elseif command == "deposit" then
-        addon.StartDeposit()
+        if not addon.StopBankTransfer() then Stop() end
+    elseif command == "deposit" or command == "retrieve" then
+        addon.StartBankTransfer(command == "retrieve")
     elseif command == "one" then
         Start(true)
     elseif command == "retry" then
